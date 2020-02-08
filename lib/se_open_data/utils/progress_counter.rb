@@ -9,11 +9,12 @@ module SeOpenData
 
       # @param explanation [String] description of the process whose progress is being counted
       # @param size [Integer] total number of steps to complete the process
-      def initialize(explanation, size)
+      def initialize(explanation, size,output = $stdout)
         @todo = size
         @done = 0
         @prev_msg_size = 0
-        $stdout.write explanation + " "
+        @custom_output = output
+        @custom_output.write explanation + " "
       end
 
       # Tell the Progress counter how many step have been made towards completion
@@ -26,9 +27,9 @@ module SeOpenData
         if pc != @prev_pc
           @prev_pc = pc
           msg = "(#{pc}%)"
-          $stdout.write "\b"*@prev_msg_size + msg
+          @custom_output.write "\b"*@prev_msg_size + msg
           @prev_msg_size = msg.size
-          $stdout.write "\n" if @done == @todo
+          @custom_output.write "\n" if @done == @todo
         end
       end
     end

@@ -19,8 +19,10 @@ module SeOpenData
       csv_opts.merge!(headers: true, skip_blanks: true)
 
       # If it's there, strip BOM from utf8
+      input_io.encode!('UTF-8', 'UTF-8', :invalid => :replace)
       input_io.delete!("\xEF\xBB\xBF")
 
+      
       csv_in = ::CSV.new(input_io, csv_opts)
       csv_out = ::CSV.new(output_io)
       csv_out << output_headers.values

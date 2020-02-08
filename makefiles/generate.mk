@@ -18,6 +18,7 @@ include $(MAKEFILE_INC_DIR)load_edition.mk
 include $(MAKEFILE_INC_DIR)files.mk
 include $(MAKEFILE_INC_DIR)uris.mk
 
+$(eval $(call var_check_warning,SAMEAS_CSV,CSV file containing pairs of URIs that refer to the same SSE initiative))
 $(eval $(call var_check,STANDARD_CSV,CSV file containing initiatives to be converted to RDF))
 $(eval $(call var_check,CSS_SRC_DIR,Directory containing CSS files (to be deployed)))
 
@@ -27,7 +28,7 @@ CSV_TO_RDF := $(SE_OPEN_DATA_BIN_DIR)csv/standard/csv-to-rdf.rb
 RUBY := ruby
 
 css: | $(GEN_CSS_DIR)
-	rsync -r $(CSS_SRC_DIR) $(GEN_CSS_DIR)
+	cp -r $(CSS_SRC_DIR) $(GEN_CSS_DIR)
 
 all: $(STANDARD_CSV) $(SAMEAS_CSV) css | $(GEN_DOC_DIR) $(GEN_VIRTUOSO_DIR) $(GEN_SPARQL_DIR)
 	echo "$(SPARQL_ENDPOINT)" > $(SPARQL_ENDPOINT_FILE)
@@ -37,8 +38,8 @@ all: $(STANDARD_CSV) $(SAMEAS_CSV) css | $(GEN_DOC_DIR) $(GEN_VIRTUOSO_DIR) $(GE
 	  --uri-prefix $(DATASET_URI_BASE) \
 	  --essglobal-uri $(ESSGLOBAL_URI) \
 	  --one-big-file-basename $(ONE_BIG_FILE_BASENAME) \
-	  $(if $(SAMEAS_CSV),--sameas-csv '$(SAMEAS_CSV)' \
-	  --sameas-headers '$(SAMEAS_HEADERS)') \
+	  --sameas-csv '$(SAMEAS_CSV)' \
+	  --sameas-headers '$(SAMEAS_HEADERS)' \
 	  --map-app-sparql-query-filename $(SPARQL_GET_ALL_FILE) \
 	  --css-files '$(subst $(space),$(comma),$(DEPLOYED_CSS_FILES))' \
 	  $<
