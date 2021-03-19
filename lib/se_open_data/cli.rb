@@ -52,9 +52,6 @@ module SeOpenData
         end
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Removes all the generated files in the directory set by
@@ -64,9 +61,6 @@ module SeOpenData
       puts "Deleting #{config.TOP_OUTPUT_DIR} and any contents."
       FileUtils.rm_rf config.TOP_OUTPUT_DIR
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Obtains new data from limesurvey.
@@ -150,9 +144,6 @@ module SeOpenData
         IO.write src_file, exporter.export_responses(config.LIMESURVEY_SURVEY_ID, "csv", "en")
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Obtains new data from an HTTP URL
@@ -239,9 +230,6 @@ module SeOpenData
       IO.write etag_file, etag
       IO.write original_csv, fetch(config.DOWNLOAD_URL)
       return true
-    rescue => e
-      warn e.message
-      return false
     end
  
     def self.command_etag
@@ -251,9 +239,6 @@ module SeOpenData
       # Download the data
       puts etag(config.DOWNLOAD_URL)
       return true
-    rescue => e
-      warn e.message
-      return false 
     end
  
     # Obtains new data by running the `downloader` script in the
@@ -296,9 +281,6 @@ module SeOpenData
         raise "'downloader' command in current directory failed"
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Runs the `converter` script in the current directory, if present
@@ -333,9 +315,6 @@ module SeOpenData
         raise "'converter' command in current directory failed"
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Generates the static data in `WWW_DIR` and `GEN_SPARQL_DIR`
@@ -439,9 +418,6 @@ module SeOpenData
       meta_json = File.join(config.GEN_DOC_DIR, 'meta.json')
       IO.write meta_json, metadata.to_json
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Deploys the generated data on a web server.
@@ -460,9 +436,6 @@ module SeOpenData
         verbose: true,
       )
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # This inserts an .htaccess file on the w3id.solidarityeconomy.coop website
@@ -541,9 +514,6 @@ HERE
         group: config.DEPLOYMENT_WEB_GROUP,
       )
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Uploads the linked-data graph to the Virtuoso triplestore server
@@ -622,10 +592,8 @@ HERE
       end
       return true
     rescue => e
-      # Delete this output file, and rethrow
+      # Delete this output file
       File.delete config.VIRTUOSO_SCRIPT_LOCAL if File.exist? config.VIRTUOSO_SCRIPT_LOCAL
-      warn e.message
-      return false
     end
 
     # Gets the content of an URL, following redirects
