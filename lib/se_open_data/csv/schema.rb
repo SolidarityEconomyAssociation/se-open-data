@@ -431,6 +431,11 @@ module SeOpenData
               end
 
               new_id_hashes.each do |new_id_hash|
+                pk = new_id_hash.fetch_values(*@to_schema.primary_key)
+                pk_count = pk.compact.size
+                expected_pk_count = @to_schema.primary_key.size
+                warn "invalid primary key value #{pk}"if pk_count != expected_pk_count
+                
                 # this may throw
                 csv_out << @to_schema.row(new_id_hash)
               end
