@@ -17,6 +17,7 @@ Gem::Specification.new do |s|
   s.metadata    = { "source_code_uri" => "https://github.com/SolidarityEconomyAssociation/se-open-data" }
 
   s.add_runtime_dependency('httparty')
+  s.add_runtime_dependency('i18n')
   s.add_runtime_dependency('levenshtein')
   s.add_runtime_dependency('linkeddata')
   s.add_runtime_dependency('nokogiri')
