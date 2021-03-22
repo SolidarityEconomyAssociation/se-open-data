@@ -1,5 +1,6 @@
 require "csv"
 require "json"
+require "normalize_country"
 require_relative "cache"
 
 module SeOpenData
@@ -52,6 +53,11 @@ module SeOpenData
           return nil unless address_array
           address_array.reject! { |addr| addr == "" || addr == nil }
           address_array.map! { |addr| uk_postcode?(addr) ? addr.gsub(/[!@#$%^&*-]/, " ") : addr } # remove special characters
+
+          # Expand 2-letter country codes, hackily (best effort, this is all hacky already)
+          address_array.map! do |addr|
+            addr.match(/^[A-Z][A-Z]$/)? NormalizeCountry(addr, to: :short) : addr
+          end
           search_key = address_array.join(", ")
           return nil unless search_key
           return search_key
@@ -74,6 +80,8 @@ module SeOpenData
               cached_entry = @geocoder.get_new_data(search_key, country)
               @cache.merge!({ search_key => cached_entry })
             end
+
+            raise "mismatch" if country.downcase != country.downcase
 
             return nil if cached_entry.empty?
 
