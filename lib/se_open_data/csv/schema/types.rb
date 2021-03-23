@@ -91,11 +91,11 @@ module SeOpenData
         # @param val [String] the multi-value field
         # @param delim [String] the sub-field delimiter character
         # @param quote [String] the sub-field qupte character
-        def self.multivalue(val, delim: ';', quote: "'")
+        def self.multivalue(val, delim: ';', quote: "'", outdelim: ';')
           subfields = ::CSV.parse_line(val.to_s, quote_char: quote, col_sep: delim).to_a
           new_subfields = subfields.collect {|field| yield field.strip, subfields }.compact
           ::CSV.generate_line(new_subfields,
-                              quote_char: quote, col_sep: delim).chomp
+                              quote_char: quote, col_sep: outdelim).chomp
         end
 
         # Converts a two-letter country code to a country name.
