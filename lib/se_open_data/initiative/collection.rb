@@ -1,10 +1,14 @@
 require 'se_open_data/csv/row_reader'
 require 'se_open_data/initiative'
 require 'se_open_data/utils/progress_counter'
+require 'se_open_data/utils/log_factory'
 
 module SeOpenData
   class Initiative
     class Collection < Array
+      # Create a log instance
+      Log = SeOpenData::Utils::LogFactory.default
+      
       # These files define other methods of this class
       require 'se_open_data/initiative/collection/rdf'
       require 'se_open_data/initiative/collection/html'
@@ -39,18 +43,27 @@ module SeOpenData
         # Create RDF for each initiative
         counter = SeOpenData::Utils::ProgressCounter.new("Saving RDF files for each initiative", size)
         each {|initiative|
+          Log.debug "Serialising initiative #{initiative.id} as .rdf"
           initiative.rdf.save_rdfxml(outdir)
+          Log.debug "Serialising initiative #{initiative.id} as .ttl"
           initiative.rdf.save_turtle(outdir)
+          Log.debug "Serialising initiative #{initiative.id} as .html"
           initiative.html.save(outdir)
           counter.step
         }
+        Log.debug "Serialising initiative index as .rdf"
         rdf.save_index_rdfxml(outdir)
+        Log.debug "Serialising initiative index as .ttl"
         rdf.save_index_turtle(outdir)
+        Log.debug "Serialising all initiatives as .rdf"
         rdf.save_one_big_rdfxml(outdir)
         # Skip saving the one big turtle, because we send only the RDF/XML file to the triplestore
         # and generating this takes a while.
+        # Log.debug "Serialising all initiatives as .ttl"
         #rdf.save_one_big_turtle(outdir)
+        Log.debug "Serialising all initiatives as .html"
         html.save(outdir)
+        Log.debug "Creating SPARQL query"
         sparql.save_map_app_sparql_query
       end
       def index_filename(outdir, ext)

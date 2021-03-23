@@ -44,10 +44,10 @@ module SeOpenData
     # @return true if all steps succed, false if any fail.
     def self.command_run_all
       %w(download convert generate deploy create_w3id triplestore).each do |name|
-        puts "Running command #{name}"
+        Log.info "Running command #{name}"
         rc = send "command_#{name}".to_sym
         if rc != true && rc != 0
-          warn "stopping, #{name} failed"
+          Log.error "stopping, #{name} failed"
           return false
         end
       end
@@ -58,7 +58,7 @@ module SeOpenData
     # {SeOpenData::Config} value `TOP_OUTPUT_DIR`
     def self.command_clean
       config = load_config
-      puts "Deleting #{config.TOP_OUTPUT_DIR} and any contents."
+      Log.info "Deleting #{config.TOP_OUTPUT_DIR} and any contents."
       FileUtils.rm_rf config.TOP_OUTPUT_DIR
       return true
     end
@@ -221,7 +221,7 @@ module SeOpenData
         # not inhibit the download in that case.
         old_etag = IO.read(etag_file).strip
         if old_etag != '' && old_etag == etag
-          warn "No new data"
+          Log.warn "No new data"
           return 100
         end
       end
@@ -237,7 +237,7 @@ module SeOpenData
       config = load_config
 
       # Download the data
-      puts etag(config.DOWNLOAD_URL)
+      log.info etag(config.DOWNLOAD_URL)
       return true
     end
  
@@ -501,7 +501,7 @@ RewriteRule ^(.*)$ #{redir}$1.ttl [R=303,L]
 RewriteRule ^(.*)$ #{redir}$1.rdf [R=303,L]
 HERE
 
-      puts "creating htaccess file.."
+      Log.info "creating htaccess file.."
       IO.write(config.HTACCESS, htaccess)
       to_serv = config.respond_to?(:DEPLOYMENT_SERVER) ? config.DEPLOYMENT_SERVER : nil
 
@@ -547,10 +547,10 @@ HERE
         IO.write File.join(config.GEN_VIRTUOSO_DIR, dst), content
       end
       
-      puts "Creating #{config.VIRTUOSO_NAMED_GRAPH_FILE}"
+      Log.info "Creating #{config.VIRTUOSO_NAMED_GRAPH_FILE}"
       IO.write config.VIRTUOSO_NAMED_GRAPH_FILE, config.GRAPH_NAME
 
-      puts "Creating #{config.VIRTUOSO_SCRIPT_LOCAL}"
+      Log.info "Creating #{config.VIRTUOSO_SCRIPT_LOCAL}"
 
       # Info about isql commands here:
       # http://docs.openlinksw.com/virtuoso/virtuoso_clients_isql/
@@ -577,8 +577,8 @@ HERE
 
       if (config.AUTO_LOAD_TRIPLETS)
         password = pass.get config.VIRTUOSO_PASS_FILE
-        puts autoload_cmd "<PASSWORD>", config
-        unless system autoload_cmd password, config
+        Log.info autoload_cmd "<PASSWORD>", config
+        unless system autoload_cmd password, config # FIXME try to redirect output via log
           raise "autoload triplets failed"
         end
       else
@@ -609,7 +609,7 @@ HERE
       request = Net::HTTP::Get.new(uri)
       request["Accept"] = "application/rdf+xml"
 
-      puts "fetching #{uri}"
+      Log.info "fetching #{uri}"
       response = Net::HTTP.start(
         uri.hostname, uri.port,
         :use_ssl => uri.scheme == "https",
@@ -622,7 +622,7 @@ HERE
         response.body
       when Net::HTTPRedirection
         location = response["location"]
-        warn "redirected to #{location}"
+        Log.debug "redirected to #{location}"
         fetch(location, limit: limit - 1)
       else
         response.value
@@ -637,7 +637,7 @@ HERE
       request = Net::HTTP::Head.new(uri)
       request["Accept"] = "application/rdf+xml"
 
-      puts "head #{uri}"
+      Log.debug "head #{uri}"
       response = Net::HTTP.start(
         uri.hostname, uri.port,
         :use_ssl => uri.scheme == "https",
@@ -650,7 +650,7 @@ HERE
         response
       when Net::HTTPRedirection
         location = response["location"]
-        warn "redirected to #{location}"
+        Log.debug "redirected to #{location}"
         head(location, limit: limit - 1)
       else
         response
@@ -685,7 +685,7 @@ HERE
 
     # Delegates to Deployment#deploy
     def self.deploy(**args)
-      warn "deploying to #{args.fetch(:to_server, 'localhost')}:#{args[:to_dir]}"
+      Log.info "deploying to #{args.fetch(:to_server, 'localhost')}:#{args[:to_dir]}"
       SeOpenData::Utils::Deployment.new.deploy(**args)
     end
 

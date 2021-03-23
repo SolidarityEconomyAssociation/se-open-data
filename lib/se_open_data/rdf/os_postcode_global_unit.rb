@@ -2,11 +2,15 @@ require "csv"
 require "json"
 require "normalize_country"
 require_relative "cache"
+require "se_open_data/utils/deployment"
 
 module SeOpenData
   module RDF
     module OsPostcodeGlobalUnit
       class Client
+        # Create a log instance
+        Log = SeOpenData::Utils::LogFactory.default
+        
         attr_accessor :cache
         attr_accessor :initial_cache
         attr_reader :geocoder
@@ -59,6 +63,7 @@ module SeOpenData
             addr.match(/^[A-Z][A-Z]$/)? NormalizeCountry(addr, to: :short) : addr
           end
           search_key = address_array.join(", ")
+          Log.info "Geocoding: #{search_key}";
           return nil unless search_key
           return search_key
         end
