@@ -11,9 +11,10 @@
 require_relative '../lib/load_path'
 require 'se_open_data/cli'
 
+seod = File.basename(__FILE__)
 usage = <<USAGE
 usage:
-   #{File.basename(__FILE__)} <command>
+   #{seod} <command>
 
 Where <command> can be:
 
@@ -25,20 +26,99 @@ Where <command> can be:
 - triplestore
 - run_all
 - clean
+- help
 
-The return code indicates whether these commands succeed or not. A
-zero return code indicuates success, as usual for console commands. A
-non-zero value indicates something else: typically failure.
+The operation of this script is configured by one or more
+configuration files, and by appropriately named scripts, both located
+in the current directory from which this command is run. 
 
-However the download command may return the value 100 to indicate that
+The environment variable `SEOD_CONFIG` can be defined to name the
+config file which `#{seod}` should use. If it is not set, `local.conf`
+is used. Use this for developer-specific configuration which should
+not be checked into the source code.
+
+The return code of `#{seod}` indicates whether these commands succeed
+or not. A zero return code indicuates success, as usual for console
+commands. A non-zero value indicates something else: typically
+failure.
+
+However, the download command may return the value 100 to indicate that
 either there is no download script, or that it has determined there is
 no new data to download. This is so that later steps can be skipped in
 this case.
 
+For more information, read the inline documentation in `#{seod}`, here:
+
+    #{__FILE__}
+
+See also documentation for the modules `SeOpenData::Config` and
+`SeOpenData::Cli`.
+
 USAGE
+
+docs = <<DOCS
+SCRIPTS:
+
+There are currently two scripts which if defined are used to implement
+case-specific logic, for the `download` and `convert` commands,
+respectvely. The logic can be completely custom for each
+case. However, whenever possible, it is recommended that they simply
+invoke general routines from the SeOpenData::Cli module. See that for
+more information.
+
+- `downloader`: if present, it should update the original data
+  file. It should return a status code of 0 on success, 100 to
+  indicate there is no data to download, or any other value to
+  indicate failure. May be absent, for instance because there is no
+  automated update mechanism.
+- `converter`: this must be present, and should convert the original
+  data file into the `standard.csv` file, returning 0 on success, and
+  anything else indicating an error.
+
+
+CONFIGURATION:
+
+By default, a the preferred configuration file is called `local.conf`,
+indicating that it is purely local to the current working copy, with
+hosts and other settings for the convenience of the
+developer. Therefore, this should git-ignored, and not checked into
+version control.
+
+Specifically, `local.conf` is used if the environment variable
+`SEOD_CONFIG` is empty or unset.
+
+Typically, other configuration files are also present, and checked
+into version control. These can be selected by setting the environment
+variable `SEOD_CONFIG` to their filename before running `#{seod}`. The
+usual ones are:
+
+- `default.conf` should contain configuration used for development
+  builds and deployment if the data, using the perspective of
+  automated deployment of `open-data` on a development server.
+
+- `staging.conf` should contain configuration use for production
+  builds and deployment of the data, using the persective of automated
+  deployment of `open-data` on a development server.
+
+- `production.conf` should contain configuration use for production
+  builds and deployment of the data, using the persective of automated
+  deployment of `open-data` on a production server.
+
+Notice that staging and production are similar in content. The
+difference is that `staging.conf` typically deploys a *development*
+branch in *production* mode, whereas `production.conf` deployes a
+*production* branch in *production* mode.  Historically `staging.conf`
+was used to deploy a new production server which was being vetted
+before being used to replace the actual production server. Production
+URIs are used in both cases, but different destinations are defined.
+
+DOCS
+
 
 command, *rest = ARGV
 abort usage unless command && rest.size == 0
+
+abort usage+docs if command == 'help'
 
 method = "command_#{command}".to_sym
 abort usage unless SeOpenData::Cli.respond_to? method
