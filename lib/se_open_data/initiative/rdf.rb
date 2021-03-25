@@ -238,7 +238,9 @@ module SeOpenData
         organisational_structure_uris.each { |organisational_structure_uri|
           graph.insert([uri, config.essglobal_vocab.organisationalStructure, organisational_structure_uri])
         }
-        graph.insert([uri, config.essglobal_vocab.country_id, country_id])
+        if country_id # this is optional
+          graph.insert([uri, config.essglobal_vocab.country_id, country_id])
+        end
         # Leaving this out until we figure out how to create composite
         # vocabs (country+region+super-region)
         #graph.insert([uri, config.essglobal_vocab.territory_id, territory_id])
