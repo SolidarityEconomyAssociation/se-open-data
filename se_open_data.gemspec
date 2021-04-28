@@ -1,4 +1,5 @@
 # -*- ruby -*-
+# frozen_string_literal: true
 Gem::Specification.new do |s|
   s.name        = 'se_open_data'
   s.version     = '1.0.0'
