@@ -1,5 +1,8 @@
 require 'csv'
 require 'se_open_data/utils/log_factory'
+require 'i18n'
+
+I18n.available_locales = [:en]
 
 module SeOpenData
   module CSV
@@ -75,6 +78,10 @@ module SeOpenData
           val =~ /^[+-]?\d+[.]\d+$/? val : default
         end
 
+        def self.to_sym(str)
+          parameterize(str.strip.downcase.tr('-','_'), separator: "_").to_sym
+        end
+        
         # Splits the field by the given delimiter, passes to the block for mapping,
         #
         # Parses the block like a CSV row, with default delimiter
@@ -83,12 +90,12 @@ module SeOpenData
         #
         # @param val [String] the multi-value field
         # @param delim [String] the sub-field delimiter character
-        # @param quote [String] the sub-field qupte character
-        def self.multivalue(val, delim: ';', quote: "'")
-          subfields = ::CSV.parse_line(val, quote_char: quote, col_sep: delim)
+        # @param quote [String] the sub-field quote character
+        def self.multivalue(val, delim: ';', quote: "'", outdelim: ';')
+          subfields = ::CSV.parse_line(val.to_s, quote_char: quote, col_sep: delim).to_a
           new_subfields = subfields.collect {|field| yield field.strip, subfields }.compact
           ::CSV.generate_line(new_subfields,
-                              quote_char: quote, col_sep: delim).chomp
+                              quote_char: quote, col_sep: outdelim).chomp
         end
 
         # Converts a two-letter country code to a country name.
@@ -99,6 +106,33 @@ module SeOpenData
           @@country_codes[:"#{code.to_s.upcase}"]
         end
 
+        # Borrowed from the Rails codebase
+        def self.parameterize(string, separator: "-", preserve_case: false)
+          # Replace accented chars with their ASCII equivalents.
+          parameterized_string = I18n.transliterate(string)
+
+          # Turn unwanted chars into the separator.
+          parameterized_string.gsub!(/[^a-z0-9\-_]+/, separator)
+
+          unless separator.nil? || separator.empty?
+            if separator == "-".freeze
+              re_duplicate_separator        = /-{2,}/
+              re_leading_trailing_separator = /^-|-$/
+            else
+              re_sep = Regexp.escape(separator)
+              re_duplicate_separator        = /#{re_sep}{2,}/
+              re_leading_trailing_separator = /^#{re_sep}|#{re_sep}$/
+            end
+            # No more than one of the separator in a row.
+            parameterized_string.gsub!(re_duplicate_separator, separator)
+            # Remove leading/trailing separator.
+            parameterized_string.gsub!(re_leading_trailing_separator, "".freeze)
+          end
+
+          parameterized_string.downcase! unless preserve_case
+          parameterized_string
+        end
+        
         @@country_codes = {
           AF: "Afghanistan",
           AX: "Aland Islands",

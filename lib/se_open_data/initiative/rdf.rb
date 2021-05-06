@@ -1,6 +1,7 @@
 require "linkeddata"
 require "se_open_data/initiative/rdf/config"
 require "se_open_data/initiative/file"
+require "normalize_country"
 
 module SeOpenData
   class Initiative
@@ -53,6 +54,39 @@ module SeOpenData
         ::RDF::URI("#{uri}#Address")
       end
 
+      # @returns a URI, or nil
+      def country_id
+        if initiative.country_id.nil?
+          nil
+        else
+          id = initiative.country_id
+          uri = URI.join(config.countries_lookup.uri+'/', id)
+          if config.countries_lookup.has_concept?(uri)
+            ::RDF::URI(uri)
+          else
+            warn "Could not find country: #{uri}"
+            nil
+          end
+        end
+      end
+
+      # @returns a URI, or nil
+      def territory_id
+        if initiative.territory_id.nil?
+          nil
+        else
+          id = initiative.territory_id
+          uri = URI.join(config.territories_lookup.uri+'/', id)
+          if config.territories_lookup.has_concept?(uri)
+            ::RDF::URI(uri)
+          else
+            warn "Could not find territory: #{uri}"
+            nil
+          end
+        end
+      end
+
+      
       def phone_uri
         ::RDF::URI("#{uri}#Telephone")
       end
@@ -198,15 +232,18 @@ module SeOpenData
         if initiative.homepage && !initiative.homepage.empty?
           graph.insert([uri, ::RDF::Vocab::FOAF.homepage, initiative.homepage])
         end
-        # legal_form_uris.each {|legal_form_uri|
-        #   graph.insert([uri, config.essglobal_vocab.legalForm, legal_form_uri])
-        # }
         activities_uris.each { |activities_mod_uri|
           graph.insert([uri, config.essglobal_vocab.economicSector, activities_mod_uri])
         }
         organisational_structure_uris.each { |organisational_structure_uri|
           graph.insert([uri, config.essglobal_vocab.organisationalStructure, organisational_structure_uri])
         }
+        if country_id # this is optional
+          graph.insert([uri, config.essglobal_vocab.country_id, country_id])
+        end
+        # Leaving this out until we figure out how to create composite
+        # vocabs (country+region+super-region)
+        #graph.insert([uri, config.essglobal_vocab.territory_id, territory_id])
         qualifier_uris.each { |qualifier_uri|
           graph.insert([uri, config.essglobal_vocab.qualifier, qualifier_uri]) #might cause error? qualifier should be applied to input
         }
@@ -233,16 +270,22 @@ module SeOpenData
         end
         # Map values onto their VCARD porperties:
         {
-          initiative.street_address => "street-address",
-          initiative.locality => "locality",
-          initiative.region => "region",
-          initiative.postcode => "postal-code",
-          initiative.country_name => "country-name",
-        }.each { |val, property|
+          "street-address" => initiative.street_address, 
+          "locality" => initiative.locality,
+          "region" => initiative.region,
+          "postal-code" => initiative.postcode,
+          "country-name" => NormalizeCountry(initiative.country_id),
+        }.each { |property, val|
           if val && !val.empty?
             graph.insert([address_uri, ::RDF::Vocab::VCARD[property], val])
           end
         }
+        # Don't set this yet, it causes duplicate rows in the data query
+        # because of the other within: definition
+        #if initiative.country_id
+        #  graph.insert([address_uri, Config::Osspatialrelations.within, country_id])
+        #end
+
 
         if geocontainer_uri
           graph.insert([address_uri, Config::Osspatialrelations.within, geocontainer_uri])

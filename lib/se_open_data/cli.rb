@@ -44,29 +44,23 @@ module SeOpenData
     # @return true if all steps succed, false if any fail.
     def self.command_run_all
       %w(download convert generate deploy create_w3id triplestore).each do |name|
-        puts "Running command #{name}"
+        Log.info "Running command #{name}"
         rc = send "command_#{name}".to_sym
         if rc != true && rc != 0
-          warn "stopping, #{name} failed"
+          Log.error "stopping, #{name} failed"
           return false
         end
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Removes all the generated files in the directory set by
     # {SeOpenData::Config} value `TOP_OUTPUT_DIR`
     def self.command_clean
       config = load_config
-      puts "Deleting #{config.TOP_OUTPUT_DIR} and any contents."
+      Log.info "Deleting #{config.TOP_OUTPUT_DIR} and any contents."
       FileUtils.rm_rf config.TOP_OUTPUT_DIR
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Obtains new data from limesurvey.
@@ -150,9 +144,6 @@ module SeOpenData
         IO.write src_file, exporter.export_responses(config.LIMESURVEY_SURVEY_ID, "csv", "en")
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Obtains new data from an HTTP URL
@@ -230,7 +221,7 @@ module SeOpenData
         # not inhibit the download in that case.
         old_etag = IO.read(etag_file).strip
         if old_etag != '' && old_etag == etag
-          warn "No new data"
+          Log.warn "No new data"
           return 100
         end
       end
@@ -239,9 +230,6 @@ module SeOpenData
       IO.write etag_file, etag
       IO.write original_csv, fetch(config.DOWNLOAD_URL)
       return true
-    rescue => e
-      warn e.message
-      return false
     end
  
     def self.command_etag
@@ -249,11 +237,8 @@ module SeOpenData
       config = load_config
 
       # Download the data
-      puts etag(config.DOWNLOAD_URL)
+      log.info etag(config.DOWNLOAD_URL)
       return true
-    rescue => e
-      warn e.message
-      return false 
     end
  
     # Obtains new data by running the `downloader` script in the
@@ -296,9 +281,6 @@ module SeOpenData
         raise "'downloader' command in current directory failed"
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Runs the `converter` script in the current directory, if present
@@ -333,9 +315,6 @@ module SeOpenData
         raise "'converter' command in current directory failed"
       end
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Generates the static data in `WWW_DIR` and `GEN_SPARQL_DIR`
@@ -439,9 +418,6 @@ module SeOpenData
       meta_json = File.join(config.GEN_DOC_DIR, 'meta.json')
       IO.write meta_json, metadata.to_json
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Deploys the generated data on a web server.
@@ -460,9 +436,6 @@ module SeOpenData
         verbose: true,
       )
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # This inserts an .htaccess file on the w3id.solidarityeconomy.coop website
@@ -528,7 +501,7 @@ RewriteRule ^(.*)$ #{redir}$1.ttl [R=303,L]
 RewriteRule ^(.*)$ #{redir}$1.rdf [R=303,L]
 HERE
 
-      puts "creating htaccess file.."
+      Log.info "creating htaccess file.."
       IO.write(config.HTACCESS, htaccess)
       to_serv = config.respond_to?(:DEPLOYMENT_SERVER) ? config.DEPLOYMENT_SERVER : nil
 
@@ -541,9 +514,6 @@ HERE
         group: config.DEPLOYMENT_WEB_GROUP,
       )
       return true
-    rescue => e
-      warn e.message
-      return false
     end
 
     # Uploads the linked-data graph to the Virtuoso triplestore server
@@ -556,23 +526,43 @@ HERE
       pass = SeOpenData::Utils::PasswordStore.new(use_env_vars: config.USE_ENV_PASSWORDS)
       Log.debug "Checking ENV for passwords" if pass.use_env_vars?
 
-      Log.debug "Creating #{config.VIRTUOSO_SCRIPT_LOCAL}"
-
-      content = fetch config.ESSGLOBAL_URI + "vocab/"
-      IO.write File.join(config.GEN_VIRTUOSO_DIR, "essglobal_vocab.rdf"), content
-
-      content = fetch config.ESSGLOBAL_URI + "standard/organisational-structure"
-      IO.write File.join(config.GEN_VIRTUOSO_DIR, "organisational-structure.skos"), content
-
-      puts "Creating #{config.VIRTUOSO_NAMED_GRAPH_FILE}"
+#      FileUtils.remove_dir config.GEN_VIRTUOSO_DIR
+#      Log.debug "Creating #{config.GEN_VIRTUOSO_DIR}"
+#      FileUtils.mkdir_p config.GEN_VIRTUOSO_DIR
+      
+      datafiles = {
+        "vocab/" => "essglobal_vocab.rdf",
+        "standard/organisational-structure" => "organisational-structure.rdf",
+        "standard/activities" => "activities.rdf",
+        "standard/activities-ica" => "activities-ica.rdf",
+        "standard/activities-modified" => "activities-modified.rdf",
+        "standard/base-membership-type" => "base-membership-type.rdf",
+        "standard/qualifiers" => "qualifiers.rdf",
+        "standard/countries-iso" => "countries-iso.rdf",
+        "standard/regions-ica" => "regions-ica.rdf",
+        "standard/super-regions-ica" => "super-regions-ica.rdf",
+      }
+      datafiles.each do |src, dst|
+        content = fetch config.ESSGLOBAL_URI + src
+        IO.write File.join(config.GEN_VIRTUOSO_DIR, dst), content
+      end
+      
+      Log.info "Creating #{config.VIRTUOSO_NAMED_GRAPH_FILE}"
       IO.write config.VIRTUOSO_NAMED_GRAPH_FILE, config.GRAPH_NAME
 
-      puts "Creating #{config.VIRTUOSO_SCRIPT_LOCAL}"
+      Log.info "Creating #{config.VIRTUOSO_SCRIPT_LOCAL}"
+
+      # Info about isql commands here:
+      # http://docs.openlinksw.com/virtuoso/virtuoso_clients_isql/
       IO.write config.VIRTUOSO_SCRIPT_LOCAL, <<HERE
 SPARQL CLEAR GRAPH '#{config.GRAPH_NAME}';
 ld_dir('#{config.VIRTUOSO_DATA_DIR}','*.rdf',NULL);
-ld_dir('#{config.VIRTUOSO_DATA_DIR}','*.skos',NULL);
 rdf_loader_run();
+select ll_file, ll_error from DB.DBA.load_list where ll_file like '#{config.VIRTUOSO_DATA_DIR}%' and ll_error is not null;
+select count(*) from DB.DBA.load_list where ll_file like '#{config.VIRTUOSO_DATA_DIR}%' and ll_error is not null;
+exit $if $gt $last[1] 0 1 not;
+sparql select count (*) from <#{config.GRAPH_NAME}> where {?s ?p ?o};
+exit $if $equ $last[1] 0 2 not;
 HERE
 
       to_serv = config.respond_to?(:VIRTUOSO_SERVER) ? config.VIRTUOSO_SERVER : nil
@@ -587,8 +577,8 @@ HERE
 
       if (config.AUTO_LOAD_TRIPLETS)
         password = pass.get config.VIRTUOSO_PASS_FILE
-        puts autoload_cmd "<PASSWORD>", config
-        unless system autoload_cmd password, config
+        Log.info autoload_cmd "<PASSWORD>", config
+        unless system autoload_cmd password, config # FIXME try to redirect output via log
           raise "autoload triplets failed"
         end
       else
@@ -602,10 +592,8 @@ HERE
       end
       return true
     rescue => e
-      # Delete this output file, and rethrow
+      # Delete this output file
       File.delete config.VIRTUOSO_SCRIPT_LOCAL if File.exist? config.VIRTUOSO_SCRIPT_LOCAL
-      warn e.message
-      return false
     end
 
     # Gets the content of an URL, following redirects
@@ -621,7 +609,7 @@ HERE
       request = Net::HTTP::Get.new(uri)
       request["Accept"] = "application/rdf+xml"
 
-      puts "fetching #{uri}"
+      Log.info "fetching #{uri}"
       response = Net::HTTP.start(
         uri.hostname, uri.port,
         :use_ssl => uri.scheme == "https",
@@ -634,7 +622,7 @@ HERE
         response.body
       when Net::HTTPRedirection
         location = response["location"]
-        warn "redirected to #{location}"
+        Log.debug "redirected to #{location}"
         fetch(location, limit: limit - 1)
       else
         response.value
@@ -649,7 +637,7 @@ HERE
       request = Net::HTTP::Head.new(uri)
       request["Accept"] = "application/rdf+xml"
 
-      puts "head #{uri}"
+      Log.debug "head #{uri}"
       response = Net::HTTP.start(
         uri.hostname, uri.port,
         :use_ssl => uri.scheme == "https",
@@ -662,7 +650,7 @@ HERE
         response
       when Net::HTTPRedirection
         location = response["location"]
-        warn "redirected to #{location}"
+        Log.debug "redirected to #{location}"
         head(location, limit: limit - 1)
       else
         response
@@ -697,7 +685,7 @@ HERE
 
     # Delegates to Deployment#deploy
     def self.deploy(**args)
-      warn "deploying to #{args.fetch(:to_server, 'localhost')}:#{args[:to_dir]}"
+      Log.info "deploying to #{args.fetch(:to_server, 'localhost')}:#{args[:to_dir]}"
       SeOpenData::Utils::Deployment.new.deploy(**args)
     end
 

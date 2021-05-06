@@ -392,6 +392,11 @@ module SeOpenData
             # Read the input headers, and validate them
             headers = csv_in.shift
             field_map = @from_schema.validate_headers(headers) # This may throw
+
+            # Auto-vivifying hash recording primary keys seen
+            pk_seen = Hash.new do |hash,key|
+              hash[key] = Hash.new(&hash.default_proc)
+            end
             
             # Write the output headers
             csv_out << @to_schema.field_headers
@@ -431,6 +436,16 @@ module SeOpenData
               end
 
               new_id_hashes.each do |new_id_hash|
+                pk = new_id_hash.fetch_values(*@to_schema.primary_key)
+                pk_count = pk.compact.size
+                expected_pk_count = @to_schema.primary_key.size
+                warn "invalid primary key value #{pk}"if pk_count != expected_pk_count
+
+                warn "duplicate primary key value #{pk}" unless pk_seen.dig(*pk).empty?
+                
+                # Mark this primary key as seen
+                pk_seen.dig(*pk, true)
+                
                 # this may throw
                 csv_out << @to_schema.row(new_id_hash)
               end
