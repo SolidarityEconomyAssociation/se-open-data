@@ -74,6 +74,35 @@ module SeOpenData
           return nil
         end
 
+        def self.normalise_twitter(items, base_url: 'https://twitter.com/')
+          return nil unless items
+          items = [items] unless items.respond_to? :each
+
+          items.each do |str|
+            Log.debug "Attempting to normalise Twitter URL: #{str}"
+            url = normalise_url(str.to_s, default: nil, full_url: true)
+            if url.nil?
+              Log.info "Ignoring un-normalisable URL: #{str}"
+              next
+            end
+            
+            # remove any query or anchor portion
+            url.sub!(/[?#].*/, '');
+
+            # remove any trailing slash delimiters
+            url.sub!(%r{/+$}, '')
+            
+            # Note, we don't match *just* the twitter url with no path. i.e.
+            # Just 'https://www.twitter.com/' alone is not a valid twitter URL
+            url.downcase.match(%r{^https?://([\w_-]+\.)?twitter.com/(.+)}) do |m|
+              return base_url+m[2]
+            end
+            
+            Log.info "Ignoring non-twitter URL: #{str}"
+          end
+          return nil
+        end
+
         def self.normalise_float(val, default: 0)
           val =~ /^[+-]?\d+[.]\d+$/? val : default
         end
