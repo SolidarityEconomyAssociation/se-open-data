@@ -67,6 +67,26 @@ describe SeOpenData::CSV::Schema::Types do
     
 
   end
+  
+  describe "normalise_twitter" do
+
+    # The data file should have a column with the URLs to test, and a
+    # second with the expected normalised urls.
+    urls, expected = read_data "twitter.csv"
+
+    it "normalise_twitter should normalise these URLs consistently" do
+      normalised = urls.collect do |row|
+        T.normalise_twitter(row)
+      end
+
+      # Enable condition to regenerate the url file to match the
+      # current algorithm, but remember to set it back, and check the
+      # normalisation is correct manually before committing it for
+      # future use!
+      write_data "twitter.csv", urls, normalised if false
+      value(normalised).must_equal expected
+    end
+  end
 
 end
 
