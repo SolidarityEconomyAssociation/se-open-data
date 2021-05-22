@@ -667,7 +667,7 @@ HERE
     # generates the autoload command, with the given password
     def self.autoload_cmd(pass, config)
       isql = <<-HERE
-isql-vt localhost dba "#{esc pass}" "#{esc config.VIRTUOSO_SCRIPT_REMOTE}"
+isql-vt -H localhost -U dba -P "#{esc pass}" <"#{esc config.VIRTUOSO_SCRIPT_REMOTE}"
 HERE
       if !config.respond_to? :VIRTUOSO_SERVER
         return isql
