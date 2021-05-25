@@ -569,10 +569,23 @@ HERE
 
       puts "Creating #{config.VIRTUOSO_SCRIPT_LOCAL}"
       IO.write config.VIRTUOSO_SCRIPT_LOCAL, <<HERE
+#!/bin/sh
+
+password=${1?Please supply a password}
+
+isql-vt -H localhost -U dba -P "$password" <<SQL && rm -rf #{config.VIRTUOSO_DATA_DIR}
 SPARQL CLEAR GRAPH '#{config.GRAPH_NAME}';
 ld_dir('#{config.VIRTUOSO_DATA_DIR}','*.rdf',NULL);
 ld_dir('#{config.VIRTUOSO_DATA_DIR}','*.skos',NULL);
 rdf_loader_run();
+
+select ll_file, ll_error from DB.DBA.load_list where ll_file like '#{config.VIRTUOSO_DATA_DIR}%' and ll_error is not null;
+select count(*) from DB.DBA.load_list where ll_file like '#{config.VIRTUOSO_DATA_DIR}%' and ll_error is not null;
+exit $if $gt $last[1] 0 1 not;
+sparql select count (*) from <#{config.GRAPH_NAME}> where {?s ?p ?o};
+exit $if $equ $last[1] 0 2 not;
+SQL
+
 HERE
 
       to_serv = config.respond_to?(:VIRTUOSO_SERVER) ? config.VIRTUOSO_SERVER : nil
@@ -678,15 +691,13 @@ HERE
 
     # generates the autoload command, with the given password
     def self.autoload_cmd(pass, config)
-      isql = <<-HERE
-isql-vt -H localhost -U dba -P "#{esc pass}" <"#{esc config.VIRTUOSO_SCRIPT_REMOTE}"
-HERE
+      command = "/bin/sh #{config.VIRTUOSO_SCRIPT_REMOTE} \"#{esc pass}\""
       if !config.respond_to? :VIRTUOSO_SERVER
-        return isql
+        return command
       end
 
       return <<-HERE
-ssh -T "#{esc config.VIRTUOSO_SERVER}" "#{esc isql.chomp}"
+ssh -T "#{esc config.VIRTUOSO_SERVER}" #{command}
 HERE
     end
 
