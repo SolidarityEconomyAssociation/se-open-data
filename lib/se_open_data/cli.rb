@@ -1,3 +1,4 @@
+# coding: utf-8
 require "shellwords"
 require "pathname"
 require "se_open_data/utils/log_factory"
