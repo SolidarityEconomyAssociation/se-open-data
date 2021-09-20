@@ -617,8 +617,7 @@ HERE
     rescue => e
       # Delete this output file, and rethrow
       File.delete config.VIRTUOSO_SCRIPT_LOCAL if File.exist? config.VIRTUOSO_SCRIPT_LOCAL
-      warn e.message
-      return false
+      raise e
     end
 
     # Gets the content of an URL, following redirects
