@@ -603,6 +603,7 @@ HERE
     rescue => e
       # Delete this output file
       File.delete config.VIRTUOSO_SCRIPT_LOCAL if File.exist? config.VIRTUOSO_SCRIPT_LOCAL
+      raise e
     end
 
     # Gets the content of an URL, following redirects
