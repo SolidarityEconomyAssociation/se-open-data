@@ -225,15 +225,43 @@ module SeOpenData
             .delete("@#/")
         end
 
-        def self.add_postcode_lat_long(infile:, outfile:, api_key:, lat_lng_cache:,
-                                       postcode_global_cache:, to_schema: )
+        # Fill out the geocoding fields in a CSV
+        #
+        # Assumes the input and output CSV uses the schema
+        # `to_schema`. Reads the address from the input fields with id
+        # `:street_address`, `:locality`, `:region` and `:postcode`.
+        # Writes the latitude and longitude to the output fields
+        # `:geocontainer_lat` and `:geocontainer_lon` Also writes a
+        # geolocation URL into `:geocontainer`.
+        #
+        # If postcode_global_cache is undefined, only postcode lookup
+        # is done.
+        #
+        # If the api_key and postcode_global_cache parameters are set,
+        # then if the postcode is not present or not a valid UK
+        # postcode, it will attempt a global geocoding of the address.
+        #
+        # @param infile A file path to read from
+        # @param outfile A file path to write to
+        # @param api_key An API key to use for the global geocoder, optional if
+        # postcode_global_cache not set
+        # @param lat_lng_cache The path to a JSON file into which to cache postcode geolocations
+        # @param postcode_global_cache The path to JSON file into which to cache global
+        # address geolocations
+        # @param to_schema An SeOpenData::CSV::Schema instance defining the output schema
+        def self.add_postcode_lat_long(infile:, outfile:, api_key: nil, lat_lng_cache:,
+                                       postcode_global_cache: nil, to_schema: )
           input = File.open(infile, "r:bom|utf-8")
           output = File.open(outfile, "w")
+
+          geocoder = nil
+          geocoder_headers = nil
+          if postcode_global_cache
+            # Geoapify API key required
+            geocoder = SeOpenData::CSV::Standard::GeoapifyStandard::Geocoder.new(api_key)
+            geocoder_headers = SeOpenData::CSV::Standard::GeoapifyStandard::Headers
+          end
           
-          # Geoapify API key required
-          
-          geocoder = SeOpenData::CSV::Standard::GeoapifyStandard::Geocoder.new(api_key)
-          geocoder_headers = SeOpenData::CSV::Standard::GeoapifyStandard::Headers
           headers = to_schema.to_h
           SeOpenData::CSV._add_postcode_lat_long(
             input,
