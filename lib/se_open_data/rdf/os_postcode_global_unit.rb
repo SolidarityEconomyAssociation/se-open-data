@@ -86,8 +86,6 @@ module SeOpenData
               @cache.merge!({ search_key => cached_entry })
             end
 
-            raise "mismatch" if country.downcase != country.downcase
-
             return nil if cached_entry.empty?
 
             #return entry found in cache or otherwise gotten through api
