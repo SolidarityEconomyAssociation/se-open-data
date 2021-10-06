@@ -69,6 +69,7 @@ module SeOpenData
           # key not found in cache_hash, so we need to query it.
           begin
             graph = ::RDF::Graph.new
+            Log.debug "caching RDF graph: #{subject_uri}"
             graph.load(subject_uri)
             res = @rdf_query.execute(graph)
             raise "No results from query" if res.size < 1
