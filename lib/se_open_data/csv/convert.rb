@@ -1,7 +1,11 @@
 require "csv"
+require "se_open_data/utils/log_factory"
 
 module SeOpenData
   module CSV
+    # Create a log instance
+    Log = SeOpenData::Utils::LogFactory.default
+    
     @@report_csv = nil
     @@report_csv_filename = nil
 
@@ -76,7 +80,7 @@ module SeOpenData
             r.send(h)
           }
         rescue SeOpenData::Exception::IgnoreCsvRow => e
-          $stderr.puts "Ignoring row: #{e.message}:\n#{row}\n"
+          Log.warn "Ignoring row: #{e.message}:\n#{row}\n"
           r.add_comment("Ignoring row: #{e.message}")
         rescue StandardError => e # includes ArgumentError, RuntimeError, and many others.
           warning(["Could not create Initiative from CSV: #{e.message}", "The following row from the CSV data will be ignored:", row.to_s])
@@ -90,12 +94,12 @@ module SeOpenData
         end
       end
       if @@report_csv_filename
-        $stderr.puts "Comments have been added to #{@@report_csv_filename}"
+        Log.warn "Comments have been added to #{@@report_csv_filename}"
       end
     end
     def CSV.warning(msgs)
       msgs = msgs.kind_of?(Array) ? msgs : [msgs]
-      $stderr.puts msgs.map { |m| "\nWARNING! #{m}" }.join
+      Log.warn msgs.map { |m| "\nWARNING! #{m}" }.join
     end
   end
 end

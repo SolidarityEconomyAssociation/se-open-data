@@ -1,10 +1,14 @@
 require "linkeddata"
 require "se_open_data/initiative/rdf/config"
 require "se_open_data/initiative/file"
+require "se_open_data/utils/log_factory"
 
 module SeOpenData
   class Initiative
     class RDF
+      # Create a log instance
+      Log = SeOpenData::Utils::LogFactory.default
+      
       attr_reader :initiative, :config
 
       def initialize(initiative, config)
@@ -100,7 +104,7 @@ module SeOpenData
       #       if config.legal_form_lookup.has_label?(form)
       #         ::RDF::URI(config.legal_form_lookup.concept_uri(form))
       #       else
-      #         $stderr.puts "Could not find legal-form: #{form}"
+      #         Log.error "Could not find legal-form: #{form}"
       #         nil
       #       end
       #     }.compact       # To remove any nil elements added above.
@@ -116,7 +120,7 @@ module SeOpenData
             if config.activities_mod_lookup.has_label?(activity)
               ::RDF::URI(config.activities_mod_lookup.concept_uri(activity))
             else
-              $stderr.puts "Could not find activities: #{activity}"
+              Log.error "Could not find activities: #{activity}"
               nil
             end
           }.compact       # To remove any nil elements added above.
@@ -132,7 +136,7 @@ module SeOpenData
             if config.organisational_structure_lookup.has_label?(structure)
               ::RDF::URI(config.organisational_structure_lookup.concept_uri(structure))
             else
-              $stderr.puts "Could not find organisational-structure: #{structure}"
+              Log.error "Could not find organisational-structure: #{structure}"
               nil
             end
           }.compact       # To remove any nil elements added above.
@@ -148,7 +152,7 @@ module SeOpenData
             if config.qualifiers_lookup.has_label?(qualifier)
               ::RDF::URI(config.qualifiers_lookup.concept_uri(qualifier))
             else
-              $stderr.puts "Could not find qualifier: #{qualifier}"
+              Log.error "Could not find qualifier: #{qualifier}"
               nil
             end
           }.compact       # To remove any nil elements added above.
@@ -164,7 +168,7 @@ module SeOpenData
             if config.base_membership_type_lookup.has_label?(bmp)
               ::RDF::URI(config.base_membership_type_lookup.concept_uri(bmp))
             else
-              $stderr.puts "Could not find membership type: #{bmp}"
+              Log.error "Could not find membership type: #{bmp}"
               nil
             end
           }.compact       # To remove any nil elements added above.
@@ -180,7 +184,7 @@ module SeOpenData
             if config.activities_mod_lookup.has_label?(activity)
               ::RDF::URI(config.activities_mod_lookup.concept_uri(activity))
             else
-              $stderr.puts "Could not find activities: #{activity}"
+              Log.error "Could not find activities: #{activity}"
               nil
             end
           }.compact       # To remove any nil elements added above.

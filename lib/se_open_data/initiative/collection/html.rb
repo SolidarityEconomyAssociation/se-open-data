@@ -1,5 +1,6 @@
 require 'se_open_data/utils/xml'
 require 'se_open_data/utils/html'
+require "se_open_data/utils/log_factory"
 
 module SeOpenData
   class Initiative
@@ -7,6 +8,10 @@ module SeOpenData
       class HTML
 	      include SeOpenData::Utils::Xml	# for method xml()
 	      include SeOpenData::Utils::Html
+
+              # Create a log instance
+              Log = SeOpenData::Utils::LogFactory.default
+              
 	      Title = "Contents of dataset"
 	      attr_reader :collection, :config
 	      def initialize(collection, config)
@@ -14,9 +19,8 @@ module SeOpenData
 	      end
 	      def save(outdir)
 	        fname = collection.index_filename(outdir, ".html")
-	        $stdout.write "Saving #{fname}..."
+	        Log.info "Saving #{fname}..."
 	        ::File.open(fname, "w") {|f| f.write(html(outdir)) }
-	        $stdout.write "\n"
 	      end
 	      def html(outdir)
 	        "<!DOCTYPE html>\n" + 
