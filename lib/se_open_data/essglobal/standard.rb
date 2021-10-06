@@ -1,10 +1,14 @@
 require 'linkeddata'
 require 'rdf/rdfxml'
 require 'net/http'
+require 'se_open_data/utils/log_factory'
 
 module SeOpenData
   module Essglobal
     class Standard
+      # Create a log instance
+      Log = SeOpenData::Utils::LogFactory.default
+      
       # taxonomy is a string that matches one of the filenames (but without `.skos`) in:
       # https://github.com/essglobal-linked-open-data/map-sse/tree/develop/vocabs/standard
       def initialize(essglobal_uri, taxonomy)
@@ -19,6 +23,7 @@ module SeOpenData
         puts "last was redir"
         end'''
         #hardcode to test -- error looking at old url
+        Log.debug "loading RDF graph: #{uri}"
         graph = ::RDF::Graph.load(uri, format: :rdfxml)
         query = ::RDF::Query.new do
           pattern [:concept, ::RDF.type, ::RDF::Vocab::SKOS.Concept]
