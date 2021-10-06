@@ -1,9 +1,13 @@
 require 'linkeddata'
+require "se_open_data/utils/log_factory"
 
 module SeOpenData
   class Initiative
     class Collection < Array
       class RDF
+        # Create a log instance
+        Log = SeOpenData::Utils::LogFactory.default
+        
 	      # This class is needed bacause insert_graph is a protected method of ::RDF::Graph.
 	      # No other reason.
 	      class Graph < ::RDF::Graph
@@ -17,35 +21,31 @@ module SeOpenData
 	      end
 	      def save_index_rdfxml(outdir)
 	        f = collection.index_filename(outdir, ".rdf")
-	        $stdout.write "Saving #{f}..."
+	        Log.info "Saving #{f}..."
 	        ::RDF::RDFXML::Writer.open(f, standard_prefixes: true, prefixes: config.prefixes) {|writer|
 	          writer << index_graph
 	        }
-	        $stdout.write "\n"
 	      end
 	      def save_index_turtle(outdir)
 	        f = collection.index_filename(outdir, ".ttl")
-	        $stdout.write "Saving #{f}..."
+	        Log.info "Saving #{f}..."
 	        ::RDF::Turtle::Writer.open(f, standard_prefixes: true, prefixes: config.prefixes) {|writer|
 	          writer << index_graph
 	        }
-	        $stdout.write "\n"
 	      end
 	      def save_one_big_rdfxml(outdir)
 	        f = collection.one_big_filename(config.one_big_file_basename, ".rdf")
-	        $stdout.write "Saving #{f}..."
+	        Log.info "Saving #{f}..."
 	        ::RDF::RDFXML::Writer.open(f, standard_prefixes: true, prefixes: config.prefixes) {|writer|
 	          writer << one_big_graph
 	        }
-	        $stdout.write "\n"
 	      end
 	      def save_one_big_turtle(outdir)
 	        f = collection.one_big_filename(config.one_big_file_basename, ".ttl")
-	        $stdout.write "Saving #{f}..."
+	        Log.info "Saving #{f}..."
 	        ::RDF::Turtle::Writer.open(f, standard_prefixes: true, prefixes: config.prefixes) {|writer|
 	          writer << one_big_graph
 	        }
-	        $stdout.write "\n"
 	      end
 	      private
 	      def index_graph

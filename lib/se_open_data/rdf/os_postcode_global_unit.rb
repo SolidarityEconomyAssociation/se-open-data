@@ -3,6 +3,7 @@ require "json"
 require "normalize_country"
 require_relative "cache"
 require "se_open_data/utils/deployment"
+require "se_open_data/utils/log_factory"
 
 module SeOpenData
   module RDF
@@ -39,7 +40,7 @@ module SeOpenData
         def finalize(object_id)
           #save cache if it has been updated
           if @cache != @initial_cache
-            $stderr.puts "SAVING NEW CACHE"
+            Log.error "SAVING NEW CACHE"
             File.open(@csv_cache_file, "w") do |f|
               f.puts JSON.pretty_generate(@cache)
             end
@@ -91,7 +92,7 @@ module SeOpenData
             #return entry found in cache or otherwise gotten through api
             cached_entry
           rescue StandardError => msg
-            $stderr.puts msg
+            Log.error msg
             #save due to crash
             finalize(0)
             #if error from client-side or server, stop

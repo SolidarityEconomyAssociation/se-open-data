@@ -4,6 +4,7 @@ require 'linkeddata'
 require 'rdf'
 require 'net/http'
 require 'objspace'
+require "se_open_data/utils/log_factory"
 
 module SeOpenData
   module RDF
@@ -11,6 +12,9 @@ module SeOpenData
     # cache the lat/long results about postcodeunits.
     #
     class Cache
+      # Create a log instance
+      Log = SeOpenData::Utils::LogFactory.default
+      
       Failure_value = 0 # value stored in cache when query fails
       Literal_type = "literal"
       Uri_type = "uri"
@@ -43,8 +47,8 @@ module SeOpenData
             @cache_hash = JSON.parse(f.read)
           }
         rescue => e
-          $stderr.puts "No #{cache_file}: #{e.message}"
-          $stderr.puts "Creating empty cache."
+          Log.error "No #{cache_file}: #{e.message}"
+          Log.error "Creating empty cache."
           @cache_hash = {}
         end
         #puts "Initial cache: "
@@ -68,7 +72,7 @@ module SeOpenData
             graph.load(subject_uri)
             res = @rdf_query.execute(graph)
             raise "No results from query" if res.size < 1
-            $stderr.puts "Expected 1 result from query of #{key}. Found #{res.size} results. Ignoring all but first." if res.size > 1
+            Log.error "Expected 1 result from query of #{key}. Found #{res.size} results. Ignoring all but first." if res.size > 1
             #pp res
             #pp res[0].to_hash
             # The data for this subject is stored in a hash
@@ -101,7 +105,7 @@ module SeOpenData
             #pp result
             @cache_hash[key] = result
           rescue => e
-            $stderr.puts "Couldn't load resource #{key}: #{e.message}"
+            Log.error "Couldn't load resource #{key}: #{e.message}"
             @cache_hash[key] = Failure_value
           end
         end
