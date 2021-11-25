@@ -436,15 +436,17 @@ module SeOpenData
               end
 
               new_id_hashes.each do |new_id_hash|
-                pk = new_id_hash.fetch_values(*@to_schema.primary_key)
-                pk_count = pk.compact.size
-                expected_pk_count = @to_schema.primary_key.size
-                warn "invalid primary key value #{pk}"if pk_count != expected_pk_count
+                unless @to_schema.primary_key.to_a.empty?
+                  pk = new_id_hash.fetch_values(*@to_schema.primary_key)
+                  pk_count = pk.compact.size
+                  expected_pk_count = @to_schema.primary_key.size
+                  warn "invalid primary key value #{pk}"if pk_count != expected_pk_count
 
-                warn "duplicate primary key value #{pk}" unless pk_seen.dig(*pk).empty?
+                  warn "duplicate primary key value #{pk}" unless pk_seen.dig(*pk).empty?
                 
-                # Mark this primary key as seen
-                pk_seen.dig(*pk, true)
+                  # Mark this primary key as seen
+                  pk_seen.dig(*pk, true)
+                end
                 
                 # this may throw
                 csv_out << @to_schema.row(new_id_hash)
