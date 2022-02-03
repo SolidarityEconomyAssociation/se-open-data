@@ -27,9 +27,8 @@ module SeOpenData
         @concepts = {}
         query.execute(graph).each do |solution|
           @lookup[to_key(solution.label.to_s)] = solution
-          @concepts[solution.concept.to_s] = true
+          @concepts[solution.concept.to_s] = solution
         end
-
       end
 
       def get_redirect_url(url)
@@ -46,10 +45,11 @@ module SeOpenData
 	    end
 
       def has_label? (label)
-        @lookup.has_key?(to_key(label))
+        @concepts.has_key?(label) || @lookup.has_key?(to_key(label))
       end
       def concept_uri(label)
-        @lookup[to_key(label)].concept.to_s
+        solution = @concepts[label] || @lookup[to_key(label)]
+        solution.concept.to_s
       end
       def has_concept?(concept)
         @concepts.has_key?(concept.to_s)
