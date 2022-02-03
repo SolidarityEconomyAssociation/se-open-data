@@ -30,10 +30,11 @@ module SeOpenData
           pattern [:concept, ::RDF::Vocab::SKOS.prefLabel, :label]
         end
         @lookup = {}
+        @uris = {}
         query.execute(graph).each do |solution|
           @lookup[to_key(solution.label.to_s)] = solution
+          @uris[solution.concept.to_s] = solution
         end
-
       end
 
       def get_redirect_url(url)
@@ -50,10 +51,11 @@ module SeOpenData
 	    end
 
       def has_label? (label)
-        @lookup.has_key?(to_key(label))
+        @uris.has_key?(label) || @lookup.has_key?(to_key(label))
       end
       def concept_uri(label)
-        @lookup[to_key(label)].concept.to_s
+        solution = @uris[label] || @lookup[to_key(label)]
+        solution.concept.to_s
       end
       private
       def to_key(label)
