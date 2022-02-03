@@ -118,13 +118,15 @@ module SeOpenData
         # with the delimiter within). The escape character is '\\'
         #
         # @param val [String] the multi-value field
-        # @param delim [String] the sub-field delimiter character
-        # @param quote [String] the sub-field quote character
-        def self.multivalue(val, delim: ';', quote: "'", outdelim: ';')
+        # @param delim [String] the sub-field delimiter character to parse
+        # @param outdelim [String] the sub-field delimiter character to output
+        # @param quote [String] the sub-field quote character to parse
+        # @param outquote [String] the sub-field quote character to output
+        def self.multivalue(val, delim: ';', quote: "'", outdelim: ';', outquote: "'")
           subfields = ::CSV.parse_line(val.to_s, quote_char: quote, col_sep: delim).to_a
           new_subfields = subfields.collect {|field| yield field.strip, subfields }.compact
           ::CSV.generate_line(new_subfields,
-                              quote_char: quote, col_sep: outdelim).chomp
+                              quote_char: outquote, col_sep: outdelim).chomp
         end
 
         # Converts a two-letter country code to a country name.
