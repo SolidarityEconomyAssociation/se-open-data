@@ -129,6 +129,16 @@ module SeOpenData
                               quote_char: outquote, col_sep: outdelim).chomp
         end
 
+        # Joins an array of un-escaped sub-field values by the given delimiter
+        #
+        # @param val [String] the sub-fields
+        # @param outdelim [String] the sub-field delimiter character
+        # @param outquote [String] the sub-field quote character
+        def self.multivalue_join(vals, outquote: "'", outdelim: ';')
+          ::CSV.generate_line(vals,
+                              quote_char: outquote, col_sep: outdelim).chomp
+        end
+
         # Converts a two-letter country code to a country name.
         #
         # @code [#to_s] the code to convert
