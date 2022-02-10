@@ -218,7 +218,19 @@ module SeOpenData
           #ifit isn't the first one
           unless dup == first
             # add domain to the first entry (only it doesn't exist already)
-            domain = csv_map[dup][domainHeader]
+            domains = csv_map[dup]
+            unless domains
+              #pp csv_map
+              pp [hash, values]
+              pp field_map
+              throw "Can't find match for registrant #{dup}: Index csv_map[#{dup}] doesn't exist"
+            end
+            domain = domains[domainHeader]
+            unless domain
+              pp domains
+              throw "Can't find domain #{domainHeader} for registrant #{dup} in #{domains}"
+            end
+                       
             existingDomain = csv_map[first][domainHeader]
             if !existingDomain.include?(domain)
               csv_map[first][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
