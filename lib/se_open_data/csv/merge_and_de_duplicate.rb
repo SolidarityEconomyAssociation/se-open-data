@@ -151,7 +151,25 @@ module SeOpenData
 
       return field_map
     end
-    
+
+
+    def self.mk_addr_csv_original(original_csv, csv_opts, keys)
+      csvorig = nil
+      csvorig = ::CSV.read(original_csv, **csv_opts) if original_csv != nil
+      
+       # This seems to build a copy of the original csv in a hash addr_csv_original
+      # keyed by the unique identifiers of the original data
+
+      addr_csv_original = {}
+      if csvorig
+        csvorig.each do |row|
+          key = keys.map { |k| row[k] }
+          addr_csv_original[key] = row.to_h
+        end
+      end
+
+      return addr_csv_original
+    end
 
     # Merge domains and de-duplicate rows of CSV (primarily for dotcoop).
     #
@@ -202,25 +220,10 @@ module SeOpenData
 
       # CHANGE THIS
 
-      #csv_in should be the original document before geo uniformication
-      addr_csv_original = {}
-      csvorig = nil
-      csvorig = ::CSV.read(original_csv, **csv_opts) if original_csv != nil
-
-       # This seems to build a copy of the original csv in a hash addr_csv_original
-       # keyed by the unique identifiers of the original data
-      headers = nil
-      if csvorig
-        csvorig.each do |row|
-          unless headers
-            headers = row.headers
-          end
-          key = keys.map { |k| row[k] }
-          addr_csv_original[key] = row.to_h
-        end
-      end
+      addr_csv_original = mk_addr_csv_original(original_csv, csv_opts, keys)
       # CHANGE THIS
 
+      #csv_in should be the original document before geo uniformication
       csv_map, name_map, duplicate_by_ids, headers2 = mk_csv_map(domainHeader, csv_in, keys)
       field_map = munge_name_map(name_map)
 
