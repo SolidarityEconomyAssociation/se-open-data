@@ -27,93 +27,23 @@ module SeOpenData
       return kmatches
     end
 
-    # Merge domains and de-duplicate rows of CSV (primarily for dotcoop).
-    #
-    # A duplicate is defined as having the same keys as a previous row
-    #
-    # OR
-    #
-    # The same fields as another row
-    #
-    # TODO - this should really take the field to merge as an argument so
-    # it can be used by any other project that needs fields merging
-    #
-    # TODO separate field merging into different module
-    #
-    # @param input_io          Input CSV (must have headers)
-    # @param output_io         CSV with duplicates removed
-    # @param error_io          CSV containing duplicates (no headers)
-    # @param reports_dir       directory into which to write report documents
-    # @param keys              Array of column headings that make up the unique key
-    # @param domainHeader      Header name for the domain
-    # @param nameHeader        Header name for the name
-    # @param original_csv      Original csv before geocoding. Must have the same schema!
-    def CSV.merge_and_de_duplicate(
-      input_io,
-      output_io,
-      error_io,
-      reports_dir,
-      keys,
-      domainHeader,
-      nameHeader,
-      original_csv = nil
-    )
-
-      #tidy me
+    def self.mk_csv_map(domainHeader, csv_in, keys)
       small_words = %w(on the and ltd limited llp community SCCL)
       small_word_regex = /\b#{small_words.map { |w| w.upcase }.join("|")}\b/
-      #TIDY ME
-
-      csv_opts = {}
-      csv_opts.merge!(headers: true)
-      csv_in = ::CSV.new(input_io, **csv_opts)
-      csv_out = ::CSV.new(output_io)
-      csv_err = ::CSV.new(error_io)
-      used_keys = {}
-      csv_map = {}
-      headers = nil
-      headersOutput = false
-      # Since some ids for the same coop are sometimes different,
-      # we use all other fields (except the domain and the id)
-      # to identify duplicate coop entries. We do this by building a map (string -> row)
-      # the key of which is composed of all the other fields.
-      # Some of the fields though might have some misspelled data, to catch that we can implement
-      # fuzzy hashing, and hash the string key using Soundex or another algorithm
-      field_map = {}
-
-      duplicate_by_ids = {}
-      duplicate_by_fields = []
-
-      # CHANGE THIS
-
-      #csv_in should be the original document before geo uniformication
-      addr_csv_original = {}
-      headers = nil
-      csvorig = nil
-      csvorig = ::CSV.read(original_csv, **csv_opts) if original_csv != nil
-
-       # This seems to build a copy of the original csv in a hash addr_csv_original
-       # keyed by the unique identifiers of the original data
-      if csvorig
-        csvorig.each do |row|
-          unless headers
-            headers = row.headers
-          end
-          key = keys.map { |k| row[k] }
-          addr_csv_original[key] = row.to_h
-        end
-      end
-      # CHANGE THIS
-
+      
       # Since we can't be certain that the id will run lexicographically we need
       # to loop through the original data once and build a hashmap of the csv
       # with multiple domains moved into a single field.
       name_map = {}
+      csv_map = {}      
+      duplicate_by_ids = {}
+      headers = nil
       csv_in.each do |row|
         unless headers
           headers = row.headers
         end
         key = keys.map { |k| row[k] }
+
         fields_key = ""
         name = row.field(NAME_FIELD)
 
@@ -153,28 +83,43 @@ module SeOpenData
           end
         end
 
-        # filter duplicates by id
-        # If the key is already being used, add the domain to the existing domain.
-        if csv_map.has_key? key
-          domain = row.field(domainHeader)
-          existingDomain = csv_map[key][domainHeader]
-          if !existingDomain.include?(domain)
-            csv_map[key][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
-            duplicate_by_ids[key].push(row)
-            #remove key from field_map as it was already found as a duplicate
-            name_map[name][fields_key].pop()
-          end
-          # csv_err << row
-        else
-          # csv_out << row
-          csv_map[key] = row.to_h
-          duplicate_by_ids[key] = [row]
+        if filter_duplicate_by_ids(domainHeader, csv_map, duplicate_by_ids, key, row)
+          # Remove key from field_map as it was already found as a duplicate
+          name_map[name][fields_key].pop()
         end
       end
+      
+      return [csv_map, name_map, duplicate_by_ids, headers]
+    end
+      
+    def self.filter_duplicate_by_ids(domainHeader, csv_map, duplicate_by_ids, key, row)
+
+      # If the key is already being used, add the domain to the existing domain.
+      if csv_map.has_key? key
+        domain = row.field(domainHeader)
+        existingDomain = csv_map[key][domainHeader]
+        if !existingDomain.include?(domain)
+          csv_map[key][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
+          duplicate_by_ids[key].push(row)
+          return true
+        end
+      # csv_err << row
+      else
+        # csv_out << row
+        csv_map[key] = row.to_h
+        duplicate_by_ids[key] = [row]
+      end
+      
+      return false
+    end
+    
+  
+    def self.munge_name_map(name_map)
       
 #      $stderr.puts(name_map.keys)
       #name_map groups them by name
       #merge entries (in csv_map) that have the same name, and a leivenstein distance of < 2
+      field_map = {}
       name_map.each { |name, val|
         #for each mapping check the distance between the keys
         # returns [[match,match],[match,match],[match]] structure
@@ -204,8 +149,84 @@ module SeOpenData
         }
       }
 
+      return field_map
+    end
+    
+
+    # Merge domains and de-duplicate rows of CSV (primarily for dotcoop).
+    #
+    # A duplicate is defined as having the same keys as a previous row
+    #
+    # OR
+    #
+    # The same fields as another row
+    #
+    # TODO - this should really take the field to merge as an argument so
+    # it can be used by any other project that needs fields merging
+    #
+    # TODO separate field merging into different module
+    #
+    # @param input_io          Input CSV (must have headers)
+    # @param output_io         CSV with duplicates removed
+    # @param error_io          CSV containing duplicates (no headers)
+    # @param reports_dir       directory into which to write report documents
+    # @param keys              Array of column headings that make up the unique key
+    # @param domainHeader      Header name for the domain
+    # @param nameHeader        Header name for the name
+    # @param original_csv      Original csv before geocoding. Must have the same schema!
+    def CSV.merge_and_de_duplicate(
+      input_io,
+      output_io,
+      error_io,
+      reports_dir,
+      keys,
+      domainHeader,
+      nameHeader,
+      original_csv = nil
+    )
+
+      csv_opts = {}
+      csv_opts.merge!(headers: true)
+      csv_in = ::CSV.new(input_io, **csv_opts)
+      csv_out = ::CSV.new(output_io)
+      csv_err = ::CSV.new(error_io)
+      used_keys = {}
+
+      headersOutput = false
+      # Since some ids for the same coop are sometimes different,
+      # we use all other fields (except the domain and the id)
+      # to identify duplicate coop entries. We do this by building a map (string -> row)
+      # the key of which is composed of all the other fields.
+      # Some of the fields though might have some misspelled data, to catch that we can implement
+      # fuzzy hashing, and hash the string key using Soundex or another algorithm
+
+      # CHANGE THIS
+
+      #csv_in should be the original document before geo uniformication
+      addr_csv_original = {}
+      csvorig = nil
+      csvorig = ::CSV.read(original_csv, **csv_opts) if original_csv != nil
+
+       # This seems to build a copy of the original csv in a hash addr_csv_original
+       # keyed by the unique identifiers of the original data
+      headers = nil
+      if csvorig
+        csvorig.each do |row|
+          unless headers
+            headers = row.headers
+          end
+          key = keys.map { |k| row[k] }
+          addr_csv_original[key] = row.to_h
+        end
+      end
+      # CHANGE THIS
+
+      csv_map, name_map, duplicate_by_ids, headers2 = mk_csv_map(domainHeader, csv_in, keys)
+      field_map = munge_name_map(name_map)
+
       # filter duplicates by all other fields
       # merge rows that have duplicated data for all fields (except id and domain)
+      duplicate_by_fields = []
       field_map.each do |hash, values|
         #skip if no duplicates to merge
         next unless values.length > 1
@@ -213,7 +234,7 @@ module SeOpenData
         # merge domains into the first found duplicate
         # and remove all duplicate rows
         first = values.first
-        values.each { |dup|
+        values.each do |dup|
           #ifit isn't the first one
           unless dup == first
             # add domain to the first entry (only it doesn't exist already)
@@ -238,12 +259,12 @@ module SeOpenData
 
             csv_map.delete(dup)
           end
-        }
+        end
       end
 
       csv_map.each do |key, row|
         unless headersOutput
-          csv_out << headers
+          csv_out << headers2
           headersOutput = true
         end
         #row.id to identify orig row
@@ -281,7 +302,7 @@ module SeOpenData
 
       #csv_in should be the original document before geo unifornication
       original_csv_in = nil
-      headers = nil
+      headers3 = nil
       if original_csv != nil
         original_csv_in = ::CSV.read(original_csv, **csv_opts)
       else
@@ -290,8 +311,8 @@ module SeOpenData
       end
 
       original_csv_in.each do |row|
-        unless headers
-          headers = row.headers
+        unless headers3
+          headers3 = row.headers
         end
         key = keys.map { |k| row[k] }
 
@@ -314,7 +335,7 @@ module SeOpenData
         
         These documents make it clear how SEA is interpreting the DotCoop data and can be used by DotCoop to suggest corrections they can make to the source data.
         
-        [We can provide these reports in other formats, csv, json etc. as requested, which may assist you using the data to correct the source data.]", nameHeader, domainHeader, headers,
+        [We can provide these reports in other formats, csv, json etc. as requested, which may assist you using the data to correct the source data.]", nameHeader, domainHeader, headers3,
                                                                      output_dir: reports_dir)
 
       if original_csv != nil
