@@ -203,8 +203,7 @@ module SeOpenData
       original_csv = nil
     )
 
-      csv_opts = {}
-      csv_opts.merge!(headers: true)
+      csv_opts = {headers: true}
       csv_in = ::CSV.new(input_io, **csv_opts)
       csv_out = ::CSV.new(output_io)
       csv_err = ::CSV.new(error_io)
