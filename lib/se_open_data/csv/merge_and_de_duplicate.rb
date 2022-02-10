@@ -171,63 +171,7 @@ module SeOpenData
       return addr_csv_original
     end
 
-    # Merge domains and de-duplicate rows of CSV (primarily for dotcoop).
-    #
-    # A duplicate is defined as having the same keys as a previous row
-    #
-    # OR
-    #
-    # The same fields as another row
-    #
-    # TODO - this should really take the field to merge as an argument so
-    # it can be used by any other project that needs fields merging
-    #
-    # TODO separate field merging into different module
-    #
-    # @param input_io          Input CSV (must have headers)
-    # @param output_io         CSV with duplicates removed
-    # @param error_io          CSV containing duplicates (no headers)
-    # @param reports_dir       directory into which to write report documents
-    # @param keys              Array of column headings that make up the unique key
-    # @param domainHeader      Header name for the domain
-    # @param nameHeader        Header name for the name
-    # @param original_csv      Original csv before geocoding. Must have the same schema!
-    def CSV.merge_and_de_duplicate(
-      input_io,
-      output_io,
-      error_io,
-      reports_dir,
-      keys,
-      domainHeader,
-      nameHeader,
-      original_csv = nil
-    )
-
-      csv_opts = {headers: true}
-      csv_in = ::CSV.new(input_io, **csv_opts)
-      csv_out = ::CSV.new(output_io)
-      csv_err = ::CSV.new(error_io)
-      used_keys = {}
-
-      headersOutput = false
-      # Since some ids for the same coop are sometimes different,
-      # we use all other fields (except the domain and the id)
-      # to identify duplicate coop entries. We do this by building a map (string -> row)
-      # the key of which is composed of all the other fields.
-      # Some of the fields though might have some misspelled data, to catch that we can implement
-      # fuzzy hashing, and hash the string key using Soundex or another algorithm
-
-      # CHANGE THIS
-
-      addr_csv_original = mk_addr_csv_original(original_csv, csv_opts, keys)
-      # CHANGE THIS
-
-      #csv_in should be the original document before geo uniformication
-      csv_map, name_map, duplicate_by_ids, headers2 = mk_csv_map(domainHeader, csv_in, keys)
-      field_map = munge_name_map(name_map)
-
-      # filter duplicates by all other fields
-      # merge rows that have duplicated data for all fields (except id and domain)
+    def self.mk_duplicate_by_fields(domainHeader, field_map, csv_map)
       duplicate_by_fields = []
       field_map.each do |hash, values|
         #skip if no duplicates to merge
@@ -264,6 +208,64 @@ module SeOpenData
         end
       end
 
+      return duplicate_by_fields
+    end
+
+    # Merge domains and de-duplicate rows of CSV (primarily for dotcoop).
+    #
+    # A duplicate is defined as having the same keys as a previous row
+    #
+    # OR
+    #
+    # The same fields as another row
+    #
+    # TODO - this should really take the field to merge as an argument so
+    # it can be used by any other project that needs fields merging
+    #
+    # TODO separate field merging into different module
+    #
+    # @param input_io          Input CSV (must have headers)
+    # @param output_io         CSV with duplicates removed
+    # @param error_io          CSV containing duplicates (no headers)
+    # @param reports_dir       directory into which to write report documents
+    # @param keys              Array of column headings that make up the unique key
+    # @param domainHeader      Header name for the domain
+    # @param nameHeader        Header name for the name
+    # @param original_csv      Original csv before geocoding. Must have the same schema!
+    def CSV.merge_and_de_duplicate(
+      input_io,
+      output_io,
+      error_io,
+      reports_dir,
+      keys,
+      domainHeader,
+      nameHeader,
+      original_csv = nil
+    )
+
+      csv_opts = {headers: true}
+      csv_in = ::CSV.new(input_io, **csv_opts)
+      csv_out = ::CSV.new(output_io)
+      csv_err = ::CSV.new(error_io)
+
+
+      # Since some ids for the same coop are sometimes different,
+      # we use all other fields (except the domain and the id)
+      # to identify duplicate coop entries. We do this by building a map (string -> row)
+      # the key of which is composed of all the other fields.
+      # Some of the fields though might have some misspelled data, to catch that we can implement
+      # fuzzy hashing, and hash the string key using Soundex or another algorithm
+      addr_csv_original = mk_addr_csv_original(original_csv, csv_opts, keys)
+
+      # csv_in should be the original document before geo uniformication
+      csv_map, name_map, duplicate_by_ids, headers2 = mk_csv_map(domainHeader, csv_in, keys)
+      field_map = munge_name_map(name_map)
+
+      # filter duplicates by all other fields
+      # merge rows that have duplicated data for all fields (except id and domain)
+      duplicate_by_fields = mk_duplicate_by_fields(domainHeader, field_map, csv_map)
+
+      headersOutput = false
       csv_map.each do |key, row|
         unless headersOutput
           csv_out << headers2
