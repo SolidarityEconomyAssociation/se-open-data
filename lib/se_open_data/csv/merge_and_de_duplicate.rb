@@ -80,7 +80,6 @@ module SeOpenData
       # Some of the fields though might have some misspelled data, to catch that we can implement
       # fuzzy hashing, and hash the string key using Soundex or another algorithm
       field_map = {}
-      name_map = {}
 
       duplicate_by_ids = {}
       duplicate_by_fields = []
@@ -109,6 +108,7 @@ module SeOpenData
       # Since we can't be certain that the id will run lexicographically we need
       # to loop through the original data once and build a hashmap of the csv
       # with multiple domains moved into a single field.
+      name_map = {}
       csv_in.each do |row|
         unless headers
           headers = row.headers
@@ -171,8 +171,7 @@ module SeOpenData
           duplicate_by_ids[key] = [row]
         end
       end
-
-      nm = name_map
+      
 #      $stderr.puts(name_map.keys)
       #name_map groups them by name
       #merge entries (in csv_map) that have the same name, and a leivenstein distance of < 2
@@ -189,16 +188,16 @@ module SeOpenData
             matched.each { |key|
               unless key == first_key
                 # merge
-                nm[name][first_key] = nm[name][first_key] + nm[name][key]
+                name_map[name][first_key] = name_map[name][first_key] + name_map[name][key]
                 # remove
-                nm[name].reject! { |k, v| k == key }
+                name_map[name].reject! { |k, v| k == key }
               end
             }
           }
         end
       }
-      #flatten nm
-      nm.each { |name, fieldskey|
+      #flatten name_map
+      name_map.each { |name, fieldskey|
         fieldskey.each { |fkey, keys|
           str_key = name + fkey
           field_map[str_key] = keys
