@@ -133,13 +133,11 @@ module SeOpenData
     end
     
   
-    def self.munge_name_map(name_map)
-      
+    # Merge entries (in domain_map) that have the same name, and a leivenstein distance of < 2
+    def self.merge_name_map(name_map)
 #      $stderr.puts(name_map.keys)
       #name_map groups them by name
-      #merge entries (in domain_map) that have the same name, and a leivenstein distance of < 2
-      field_map = {}
-      name_map.each { |name, val|
+      name_map.each do |name, val|
         #for each mapping check the distance between the keys
         # returns [[match,match],[match,match],[match]] structure
         matched_keys = get_all_levinshtein_matches(name_map[name].keys, MAX_DIST)
@@ -147,27 +145,30 @@ module SeOpenData
         #if there are matched keys that means we have to merge them
         #i.e. add all of the entries to one of them
         if !matched_keys.empty?
-          matched_keys.each { |matched|
+          matched_keys.each do |matched|
             first_key = matched.first
-            matched.each { |key|
+            matched.each do |key|
               unless key == first_key
                 # merge
                 name_map[name][first_key] = name_map[name][first_key] + name_map[name][key]
                 # remove
                 name_map[name].reject! { |k, v| k == key }
               end
-            }
-          }
+            end
+          end
         end
-      }
+      end
+    end
+
+    def self.mk_field_map(name_map)
       #flatten name_map
-      name_map.each { |name, fieldskey|
-        fieldskey.each { |fkey, keys|
+      field_map = {}
+      name_map.each do |name, fieldskey|
+        fieldskey.each do |fkey, keys|
           str_key = name + fkey
           field_map[str_key] = keys
-        }
-      }
-
+        end
+      end
       return field_map
     end
 
@@ -338,8 +339,9 @@ module SeOpenData
       domain_map = mk_domain_map(domainHeader, duplicate_by_ids)
       name_map = mk_name_map(domainHeader, keys, duplicate_by_ids, domain_map)
       
-      field_map = munge_name_map(name_map)
-
+      merge_name_map(name_map)
+      field_map = mk_field_map(name_map)
+      
       # filter duplicates by all other fields
       # merge rows that have duplicated data for all fields (except id and domain)
       duplicate_by_fields = mk_duplicate_by_fields(domainHeader, field_map, domain_map)
