@@ -110,11 +110,13 @@ module SeOpenData
               name_map[name][fields_key].push(key)
             end
           end
-          
-          if add_to_csv_map(domainHeader, csv_map, key, row)
-            # Remove key from field_map as it was already found as a duplicate
+
+          # Remove key from field_map as it was already found as a duplicate
+          if csv_map.has_key?(key) && !csv_map[key][domainHeader].include?(row.field(domainHeader))
             name_map[name][fields_key].pop()
           end
+          
+          add_to_csv_map(domainHeader, csv_map, key, row)
         end
       end
       
@@ -129,15 +131,12 @@ module SeOpenData
         existingDomain = csv_map[key][domainHeader]
         if !existingDomain.include?(domain)
           csv_map[key][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
-          return true
         end
       # csv_err << row
       else
         # csv_out << row
         csv_map[key] = row.to_h
       end
-      
-      return false
     end
     
   
