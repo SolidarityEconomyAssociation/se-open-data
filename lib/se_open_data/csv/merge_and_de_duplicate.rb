@@ -160,6 +160,7 @@ module SeOpenData
       end
     end
 
+    # Returns name_map trasnformed into a hash mapping name+fieldskey to the original primary key
     def self.mk_field_map(name_map)
       #flatten name_map
       field_map = {}
@@ -191,21 +192,25 @@ module SeOpenData
       return addr_csv_original
     end
 
+
+    # Returns an array of elements, each of which is an arrays of row
+    # keys which are duplicated of each other.
     def self.mk_duplicate_by_fields(domainHeader, field_map, domain_map)
       duplicate_by_fields = []
-      field_map.each do |hash, values|
+      field_map.each do |name_and_fields, keys|
         #skip if no duplicates to merge
-        next unless values.length > 1
-        duplicate_by_fields.push(values)
+        next unless keys.length > 1
+        duplicate_by_fields.push(keys)
+        
         # merge domains into the first found duplicate
         # and remove all duplicate rows
-        first = values.first
-        values.drop(1).each do |dup|
+        first = keys.first
+        keys.drop(1).each do |dup|
           # add domain to the first entry (only it doesn't exist already)
           domain = domain_map[dup]
           unless domain
             #pp domain_map
-            pp [hash, values]
+            pp [name_and_fields, keys]
             pp field_map
             throw "Can't find match for registrant ID #{dup}: Index domain_map[#{dup}] doesn't exist"
           end
