@@ -27,6 +27,23 @@ module SeOpenData
       return kmatches
     end
 
+    # Make an index of the input data
+    #
+    # The first returned value is the csv_map: a hash of primary keys
+    # from the data (an array of strings taken from the fields named
+    # in keys) to the respective CSV row as a hash. One of these hash
+    # entries, defined by domainHeader, is a string which should
+    # contain a delimited list of domains (represented as HTTP(S)
+    # URLs)
+    #
+    # The second is the name_map: a hash mapping normalised registrant
+    # names to concatenated lists of selected field values, also
+    # normalised, back to the primary key source row's primary key.
+    #
+    # The third is the duplicate_by_ids: a hash mapping primary keys
+    # to a list of CSV rows (as hashes) having that key.
+    #
+    # The last is a list of CSV header field names
     def self.mk_csv_map(domainHeader, csv_in, keys)
       small_words = %w(on the and ltd limited llp community SCCL)
       small_word_regex = /\b#{small_words.map { |w| w.upcase }.join("|")}\b/
@@ -72,7 +89,7 @@ module SeOpenData
         if !name_map.has_key? name
           name_map[name] = { fields_key => [key] }
         else
-
+          
           # name_map[name].push(key)
           # build up field_map
           if !name_map[name].has_key? fields_key
@@ -182,17 +199,17 @@ module SeOpenData
         first = values.first
         values.drop(1).each do |dup|
           # add domain to the first entry (only it doesn't exist already)
-          domains = csv_map[dup]
-          unless domains
+          registrant = csv_map[dup]
+          unless registrant
             #pp csv_map
             pp [hash, values]
             pp field_map
-            throw "Can't find match for registrant #{dup}: Index csv_map[#{dup}] doesn't exist"
+            throw "Can't find match for registrant ID #{dup}: Index csv_map[#{dup}] doesn't exist"
           end
-          domain = domains[domainHeader]
+          domain = registrant[domainHeader]
           unless domain
-            pp domains
-            throw "Can't find domain #{domainHeader} for registrant #{dup} in #{domains}"
+            pp registrant
+            throw "Can't find header #{domainHeader} in registrant #{dup}'s data #{registrant}"
           end
           
           existingDomain = csv_map[first][domainHeader]
