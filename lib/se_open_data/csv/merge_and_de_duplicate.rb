@@ -195,13 +195,18 @@ module SeOpenData
 
     # Returns an array of elements, each of which is an arrays of row
     # keys which are duplicated of each other.
-    def self.mk_duplicate_by_fields(domainHeader, field_map, domain_map)
+    def self.mk_duplicate_by_fields(field_map)
       duplicate_by_fields = []
-      field_map.each do |name_and_fields, keys|
+      field_map.each_value do |keys|
         #skip if no duplicates to merge
         next unless keys.length > 1
         duplicate_by_fields.push(keys)
-        
+      end
+      return duplicate_by_fields
+    end
+    
+    def self.merge_domain_map(field_map, domain_map)
+      field_map.each do |name_and_fields, keys|
         # merge domains into the first found duplicate
         # and remove all duplicate rows
         first = keys.first
@@ -223,8 +228,6 @@ module SeOpenData
           domain_map.delete(dup)
         end
       end
-
-      return duplicate_by_fields
     end
 
     def self.write_standard_csv(csv_out, domain_map, duplicate_by_fields, headers, domainHeader, nameHeader, addr_csv_original)
@@ -349,7 +352,8 @@ module SeOpenData
       
       # filter duplicates by all other fields
       # merge rows that have duplicated data for all fields (except id and domain)
-      duplicate_by_fields = mk_duplicate_by_fields(domainHeader, field_map, domain_map)
+      duplicate_by_fields = mk_duplicate_by_fields(field_map)
+      merge_domain_map(field_map, domain_map)
 
       write_standard_csv(csv_out, domain_map, duplicate_by_ids, headers, domainHeader, nameHeader, addr_csv_original)
 
