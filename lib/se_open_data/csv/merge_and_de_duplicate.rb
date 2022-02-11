@@ -265,7 +265,7 @@ module SeOpenData
     end      
 
     def self.munge_dupes(csv_in, duplicate_by_fields, keys)
-      flat_dups = duplicate_by_fields.clone.flatten(1)
+      unmunged = duplicate_by_fields.flatten(1)
 
       headers = nil
       csv_in.each do |row|
@@ -274,17 +274,20 @@ module SeOpenData
         end
         key = keys.map { |k| row[k] }
 
-        next unless flat_dups.include?(key)
+        next unless unmunged.include?(key)
 
         #replace all
         duplicate_by_fields.each do |subarray_of_dups|
-          subarray_of_dups.map! { |dup| dup == key ? row : dup }
+          subarray_of_dups.map! do |dup|
+            dup == key ? row : dup
+          end
         end
 
         #rm key so it's skipped next time
-        flat_dups.delete(key)
+        unmunged.delete(key)
 
-        break unless flat_dups.length > 0
+        # Finish when all munged
+        break if unmunged.empty?
       end
 
       return headers
