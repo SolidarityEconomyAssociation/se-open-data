@@ -49,12 +49,10 @@ module SeOpenData
 
     # Make an index of the input data
     #
-    # The first returned value is the csv_map: a hash of primary keys
+    # The first returned value is the domain_map: a hash of primary keys
     # from the data (an array of strings taken from the fields named
-    # in keys) to the respective CSV row as a hash. One of these hash
-    # entries, defined by domainHeader, is a string which should
-    # contain a delimited list of domains (represented as HTTP(S)
-    # URLs)
+    # in keys) to a string which contains a delimited list of domains
+    # (represented as HTTP(S) URLs)
     #
     # The second is the name_map: a hash mapping normalised registrant
     # names to concatenated lists of selected field values, also
@@ -64,12 +62,12 @@ module SeOpenData
     # to a list of CSV rows (as hashes) having that key.
     #
     # The last is a list of CSV header field names
-    def self.mk_csv_map_etc(domainHeader, duplicate_by_ids, keys)
+    def self.mk_domain_map_etc(domainHeader, duplicate_by_ids, keys)
       small_words = %w(on the and ltd limited llp community SCCL)
       small_word_regex = /\b#{small_words.map { |w| w.upcase }.join("|")}\b/
             
       name_map = {}
-      csv_map = {}
+      domain_map = {}
       duplicate_by_ids.each_pair do |key, rows|
         rows.each do |row|
           fields_key = ""
@@ -98,7 +96,7 @@ module SeOpenData
           #map name => (map fields_key => set of key)
           #order them by name
           # Remove key from field_map as it was already found as a duplicate
-          unless csv_map.has_key?(key) && !csv_map[key][domainHeader].include?(row.field(domainHeader))
+          unless domain_map.has_key?(key) && !domain_map[key].include?(row.field(domainHeader))
             if !name_map.has_key? name
               name_map[name] = { fields_key => [key] }
             else
@@ -114,26 +112,25 @@ module SeOpenData
             end
           end
           
-          add_to_csv_map(domainHeader, csv_map, key, row)
+          add_to_domain_map(domainHeader, domain_map, key, row)
         end
       end
       
-      return [csv_map, name_map]
+      return [domain_map, name_map]
     end
       
-    def self.add_to_csv_map(domainHeader, csv_map, key, row)
+    def self.add_to_domain_map(domainHeader, domain_map, key, row)
+      domain = row.field(domainHeader)
 
       # If the key is already being used, add the domain to the existing domain.
-      if csv_map.has_key? key
-        domain = row.field(domainHeader)
-        existingDomain = csv_map[key][domainHeader]
-        if !existingDomain.include?(domain)
-          csv_map[key][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
+      if domain_map.has_key? key
+        if !domain_map[key].include?(domain)
+          domain_map[key] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
         end
       # csv_err << row
       else
         # csv_out << row
-        csv_map[key] = row.to_h
+        domain_map[key] = domain
       end
     end
     
@@ -142,7 +139,7 @@ module SeOpenData
       
 #      $stderr.puts(name_map.keys)
       #name_map groups them by name
-      #merge entries (in csv_map) that have the same name, and a leivenstein distance of < 2
+      #merge entries (in domain_map) that have the same name, and a leivenstein distance of < 2
       field_map = {}
       name_map.each { |name, val|
         #for each mapping check the distance between the keys
@@ -195,7 +192,7 @@ module SeOpenData
       return addr_csv_original
     end
 
-    def self.mk_duplicate_by_fields(domainHeader, field_map, csv_map)
+    def self.mk_duplicate_by_fields(domainHeader, field_map, domain_map)
       duplicate_by_fields = []
       field_map.each do |hash, values|
         #skip if no duplicates to merge
@@ -206,41 +203,41 @@ module SeOpenData
         first = values.first
         values.drop(1).each do |dup|
           # add domain to the first entry (only it doesn't exist already)
-          registrant = csv_map[dup]
-          unless registrant
-            #pp csv_map
+          domain = domain_map[dup]
+          unless domain
+            #pp domain_map
             pp [hash, values]
             pp field_map
-            throw "Can't find match for registrant ID #{dup}: Index csv_map[#{dup}] doesn't exist"
-          end
-          domain = registrant[domainHeader]
-          unless domain
-            pp registrant
-            throw "Can't find header #{domainHeader} in registrant #{dup}'s data #{registrant}"
+            throw "Can't find match for registrant ID #{dup}: Index domain_map[#{dup}] doesn't exist"
           end
           
-          existingDomain = csv_map[first][domainHeader]
-          if !existingDomain.include?(domain)
-            csv_map[first][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
+          if !domain_map[first].include?(domain)
+            domain_map[first] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
           end
           # remove the duplicates from the map (this loop keeps only the first duplicate entry)
           
-          csv_map.delete(dup)
+          domain_map.delete(dup)
         end
       end
 
       return duplicate_by_fields
     end
 
-    def self.write_standard_csv(csv_out, csv_map, headers, nameHeader, addr_csv_original)
+    def self.write_standard_csv(csv_out, domain_map, duplicate_by_fields, headers, domainHeader, nameHeader, addr_csv_original)
       headersOutput = false
-      csv_map.each do |key, row|
+      domain_map.each_pair do |key, domains|
         unless headersOutput
           csv_out << headers
           headersOutput = true
         end
         #row.id to identify orig row
         #row[:addr] = original[:addr]
+
+        # find the first duplicate
+        row = duplicate_by_fields[key].first.to_h
+
+        # Add in the domains
+        row[domainHeader] = domain_map[key]
 
         orig_addr_entry = addr_csv_original[key]
 
@@ -340,15 +337,15 @@ module SeOpenData
       # Since we can't be certain that the id will run lexicographically we need
       # to loop through the original data once and build a hashmap of the csv
       # with multiple domains moved into a single field.
-      csv_map, name_map = mk_csv_map_etc(domainHeader, duplicate_by_ids, keys)
+      domain_map, name_map = mk_domain_map_etc(domainHeader, duplicate_by_ids, keys)
       
       field_map = munge_name_map(name_map)
 
       # filter duplicates by all other fields
       # merge rows that have duplicated data for all fields (except id and domain)
-      duplicate_by_fields = mk_duplicate_by_fields(domainHeader, field_map, csv_map)
+      duplicate_by_fields = mk_duplicate_by_fields(domainHeader, field_map, domain_map)
 
-      write_standard_csv(csv_out, csv_map, headers, nameHeader, addr_csv_original)
+      write_standard_csv(csv_out, domain_map, duplicate_by_ids, headers, domainHeader, nameHeader, addr_csv_original)
 
       #print documents
       #duplicate_by_fields currently holds an array of arrays. [[key,key],[key,key]]
