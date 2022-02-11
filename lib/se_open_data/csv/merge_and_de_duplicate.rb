@@ -242,6 +242,33 @@ module SeOpenData
       end
     end      
 
+    def self.munge_dupes(csv_in, duplicate_by_fields, keys)
+      flat_dups = duplicate_by_fields.clone.flatten(1)
+
+      headers = nil
+      csv_in.each do |row|
+        unless headers
+          headers = row.headers
+        end
+        key = keys.map { |k| row[k] }
+
+        next unless flat_dups.include?(key)
+
+        #replace all
+        duplicate_by_fields.each do |subarray_of_dups|
+          subarray_of_dups.map! { |dup| dup == key ? row : dup }
+        end
+
+        #rm key so it's skipped next time
+        flat_dups.delete(key)
+
+        break unless flat_dups.length > 0
+      end
+
+      return headers
+    end
+                 
+    
     # Merge domains and de-duplicate rows of CSV (primarily for dotcoop).
     #
     # A duplicate is defined as having the same keys as a previous row
@@ -298,44 +325,21 @@ module SeOpenData
 
       write_standard_csv(csv_out, csv_map, headers, nameHeader, addr_csv_original)
 
-      dup_ids = duplicate_by_ids.values.select { |a| a.length > 1 }
-
       #print documents
       #duplicate_by_fields currently holds an array of arrays. [[key,key],[key,key]]
       #replace each key with it's corresponding row
       #TODO probably could be done better
 
-      flat_dups = duplicate_by_fields.clone
-      flat_dups.flatten!(1)
 
       #csv_in should be the original document before geo unifornication
-      original_csv_in = nil
-      headers3 = nil
-      if original_csv != nil
-        original_csv_in = ::CSV.read(original_csv, **csv_opts)
-      else
-        original_csv_in = csv_in
-        original_csv_in.rewind
-      end
+      original_csv_in = if original_csv != nil
+                          ::CSV.read(original_csv, **csv_opts)
+                        else
+                          csv_in.rewind
+                          csv_in
+                        end
 
-      original_csv_in.each do |row|
-        unless headers3
-          headers3 = row.headers
-        end
-        key = keys.map { |k| row[k] }
-
-        next unless flat_dups.include?(key)
-
-        #replace all
-        duplicate_by_fields.each do |subarray_of_dups|
-          subarray_of_dups.map! { |dup| dup == key ? row : dup }
-        end
-
-        #rm key so it's skipped next time
-        flat_dups.delete(key)
-
-        break unless flat_dups.length > 0
-      end
+      headers3 = munge_dupes(original_csv_in, duplicate_by_fields, keys)
 
       err_doc_client = SeOpenData::Utils::ErrorDocumentGenerator.new("Duplicates DotCoop Title Page", "The process of importing data from DotCoop requires us to undergo several stages of data cleanup, fixing and rejecting some incompatible data that we cannot interpret.
 
@@ -365,6 +369,9 @@ module SeOpenData
             - the groups with different RegistrantIDs but identical or very similar names and addresses, noting that they will be considered the same co-op. Only one RegistrantID and one name and address will be chosen to represent all the domains in this group from here on. 
            ", duplicate_by_fields)
       end
+
+      dup_ids = duplicate_by_ids.values.select { |a| a.length > 1 }
+
       # will not overwrite the second time since dup ids should be empty
       err_doc_client.add_similar_entries_id("Identical by RegistrantIDs", "All domains registered with the same RegistrantID are considered the same organisation.
 
