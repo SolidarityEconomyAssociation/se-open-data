@@ -65,54 +65,57 @@ module SeOpenData
     def self.mk_domain_map_etc(domainHeader, duplicate_by_ids, keys)
       small_words = %w(on the and ltd limited llp community SCCL)
       small_word_regex = /\b#{small_words.map { |w| w.upcase }.join("|")}\b/
-            
-      name_map = {}
+
+
       domain_map = {}
       duplicate_by_ids.each_pair do |key, rows|
         rows.each do |row|
-          fields_key = ""
-          name = row.field(NAME_FIELD)
-          
-          #mix fields and make a key
-          #if matches that means that entry is a duplicate
-          row.headers.each do |head|
-            unless head == domainHeader || keys.include?(head) || row.field(head) == nil || head == NAME_FIELD
-              fields_key += row.field(head)
-            end
-          end
-          
-          fields_key.tr!("^A-Za-z0-9", "")
-          fields_key.upcase!
-          
-          name = name.to_s.
-                   gsub(/\s/, "").
-                   upcase.
-                   gsub(small_word_regex, "").
-                   sub(/\([[:alpha:]]*\)/, "").
-                   gsub(/[[:punct:]]/, "").
-                   sub(/COOPERATIVE/, "COOP").
-                   sub("SCCL", "")
-          
-          #map name => (map fields_key => set of key)
-          #order them by name
-          # Remove key from field_map as it was already found as a duplicate
-          unless domain_map.has_key?(key) && !domain_map[key].include?(row.field(domainHeader))
-            if !name_map.has_key? name
-              name_map[name] = { fields_key => [key] }
-            else
-              
-              # name_map[name].push(key)
-              # build up field_map
-              if !name_map[name].has_key? fields_key
-                #here
-                name_map[name][fields_key] = [key]
-              else
-                name_map[name][fields_key].push(key)
-              end
-            end
-          end
-          
           add_to_domain_map(domainHeader, domain_map, key, row)
+        end
+      end
+      
+      name_map = {}
+      duplicate_by_ids.each_pair do |key, rows|
+        row = rows.first
+        fields_key = ""
+        name = row.field(NAME_FIELD)
+        
+        #mix fields and make a key
+        #if matches that means that entry is a duplicate
+        row.headers.each do |head|
+          unless head == domainHeader || keys.include?(head) || row.field(head) == nil || head == NAME_FIELD
+            fields_key += row.field(head)
+          end
+        end
+        
+        fields_key.tr!("^A-Za-z0-9", "")
+        fields_key.upcase!
+        
+        name = name.to_s.
+                 gsub(/\s/, "").
+                 upcase.
+                 gsub(small_word_regex, "").
+                 sub(/\([[:alpha:]]*\)/, "").
+                 gsub(/[[:punct:]]/, "").
+                 sub(/COOPERATIVE/, "COOP").
+                 sub("SCCL", "")
+        
+        #map name => (map fields_key => set of key)
+        #order them by name
+        # Remove key from field_map as it was already found as a duplicate
+        #unless domain_map.has_key?(key) && !domain_map[key].include?(row.field(domainHeader))
+        if !name_map.has_key? name
+          name_map[name] = { fields_key => [key] }
+        else
+          
+          # name_map[name].push(key)
+          # build up field_map
+          if !name_map[name].has_key? fields_key
+            #here
+            name_map[name][fields_key] = [key]
+          else
+            name_map[name][fields_key].push(key)
+          end
         end
       end
       
