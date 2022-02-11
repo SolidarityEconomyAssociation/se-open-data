@@ -49,6 +49,20 @@ module SeOpenData
       return [duplicate_by_ids, headers]
     end
     
+    # This seems to build a copy of the original csv in a hash addr_csv_original
+    # keyed by the unique identifiers of the original data
+    def self.mk_addr_csv_original(csvorig, keys)
+      addr_csv_original = {}
+      csvorig.each do |row|
+        key = keys.map { |k| row[k] }
+        addr_csv_original[key] = row.to_h
+      end
+
+      return addr_csv_original
+    end
+
+
+    
     # Returns a name_map: a hash mapping normalised registrant
     # names to concatenated lists of selected field values, also
     # normalised, back to the primary key source row's primary key.
@@ -174,25 +188,6 @@ module SeOpenData
     end
 
 
-    def self.mk_addr_csv_original(original_csv, csv_opts, keys)
-      csvorig = nil
-      csvorig = ::CSV.read(original_csv, **csv_opts) if original_csv != nil
-      
-       # This seems to build a copy of the original csv in a hash addr_csv_original
-      # keyed by the unique identifiers of the original data
-
-      addr_csv_original = {}
-      if csvorig
-        csvorig.each do |row|
-          key = keys.map { |k| row[k] }
-          addr_csv_original[key] = row.to_h
-        end
-      end
-
-      return addr_csv_original
-    end
-
-
     # Returns an array of elements, each of which is an arrays of row
     # keys which are duplicated of each other.
     def self.mk_duplicate_by_fields(field_map)
@@ -246,7 +241,7 @@ module SeOpenData
         # Add in the domains
         row[domainHeader] = domains.join(SeOpenData::CSV::Standard::V1::SubFieldSeparator)
 
-        orig_addr_entry = addr_csv_original[key]
+        orig_addr_entry = addr_csv_original && addr_csv_original[key]
 
         if orig_addr_entry
           row["Street Address"] = orig_addr_entry["Street Address"]
@@ -331,6 +326,9 @@ module SeOpenData
       csv_out = ::CSV.new(output_io)
       csv_err = ::CSV.new(error_io)
 
+      addr_csv_original = if original_csv
+                            mk_addr_csv_original(::CSV.read(original_csv, **csv_opts), keys)
+                          end
 
       # Since some ids for the same coop are sometimes different,
       # we use all other fields (except the domain and the id)
@@ -338,8 +336,7 @@ module SeOpenData
       # the key of which is composed of all the other fields.
       # Some of the fields though might have some misspelled data, to catch that we can implement
       # fuzzy hashing, and hash the string key using Soundex or another algorithm
-      addr_csv_original = mk_addr_csv_original(original_csv, csv_opts, keys)
-
+      
       # csv_in should be the original document before geo uniformication
       
       duplicate_by_ids, headers = mk_duplicate_by_ids(domainHeader, keys, csv_in)
