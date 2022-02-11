@@ -40,7 +40,7 @@ module SeOpenData
         def finalize(object_id)
           #save cache if it has been updated
           if @cache != @initial_cache
-            Log.error "SAVING NEW CACHE"
+            Log.info "SAVING NEW CACHE"
             File.open(@csv_cache_file, "w") do |f|
               f.puts JSON.pretty_generate(@cache)
             end
