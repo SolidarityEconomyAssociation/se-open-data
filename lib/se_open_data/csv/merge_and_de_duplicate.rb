@@ -242,10 +242,7 @@ module SeOpenData
         #row.id to identify orig row
         #row[:addr] = original[:addr]
 
-        #This is a quick fix
-        #TODO: FIX ME
-        id = row["Identifier"]
-        orig_addr_entry = addr_csv_original[[id]]
+        orig_addr_entry = addr_csv_original[key]
 
         if orig_addr_entry
           row["Street Address"] = orig_addr_entry["Street Address"]
