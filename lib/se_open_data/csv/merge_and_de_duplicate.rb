@@ -125,12 +125,12 @@ module SeOpenData
       # If the key is already being used, add the domain to the existing domain.
       if domain_map.has_key? key
         if !domain_map[key].include?(domain)
-          domain_map[key] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
+          domain_map[key].push(domain)
         end
       # csv_err << row
       else
         # csv_out << row
-        domain_map[key] = domain
+        domain_map[key] = [domain]
       end
     end
     
@@ -212,7 +212,7 @@ module SeOpenData
           end
           
           if !domain_map[first].include?(domain)
-            domain_map[first] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
+            domain_map[first].push(domain)
           end
           # remove the duplicates from the map (this loop keeps only the first duplicate entry)
           
@@ -237,7 +237,7 @@ module SeOpenData
         row = duplicate_by_fields[key].first.to_h
 
         # Add in the domains
-        row[domainHeader] = domain_map[key]
+        row[domainHeader] = domains.join(SeOpenData::CSV::Standard::V1::SubFieldSeparator)
 
         orig_addr_entry = addr_csv_original[key]
 
