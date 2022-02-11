@@ -64,15 +64,10 @@ module SeOpenData
     # to a list of CSV rows (as hashes) having that key.
     #
     # The last is a list of CSV header field names
-    def self.mk_csv_map_etc(domainHeader, csv_in, keys)
+    def self.mk_csv_map_etc(domainHeader, duplicate_by_ids, keys)
       small_words = %w(on the and ltd limited llp community SCCL)
       small_word_regex = /\b#{small_words.map { |w| w.upcase }.join("|")}\b/
-      
-      # Since we can't be certain that the id will run lexicographically we need
-      # to loop through the original data once and build a hashmap of the csv
-      # with multiple domains moved into a single field.
-      duplicate_by_ids, headers = mk_duplicate_by_ids(domainHeader, keys, csv_in)
-      
+            
       name_map = {}
       csv_map = {}
       duplicate_by_ids.each_pair do |key, rows|
@@ -123,7 +118,7 @@ module SeOpenData
         end
       end
       
-      return [csv_map, name_map, duplicate_by_ids, headers]
+      return [csv_map, name_map]
     end
       
     def self.add_to_csv_map(domainHeader, csv_map, key, row)
@@ -345,7 +340,14 @@ module SeOpenData
       addr_csv_original = mk_addr_csv_original(original_csv, csv_opts, keys)
 
       # csv_in should be the original document before geo uniformication
-      csv_map, name_map, duplicate_by_ids, headers = mk_csv_map_etc(domainHeader, csv_in, keys)
+      
+      duplicate_by_ids, headers = mk_duplicate_by_ids(domainHeader, keys, csv_in)
+      
+      # Since we can't be certain that the id will run lexicographically we need
+      # to loop through the original data once and build a hashmap of the csv
+      # with multiple domains moved into a single field.
+      csv_map, name_map = mk_csv_map_etc(domainHeader, duplicate_by_ids, keys)
+      
       field_map = munge_name_map(name_map)
 
       # filter duplicates by all other fields
