@@ -27,6 +27,8 @@ module SeOpenData
       return kmatches
     end
 
+    # Returns a hash mapping primary keys to a list of CSV rows (as
+    # hashes) having that key, and list of CSV header field names
     def self.mk_duplicate_by_ids(domainHeader, keys, csv_in)
       headers = nil
       duplicate_by_ids = {}
@@ -46,33 +48,13 @@ module SeOpenData
 
       return [duplicate_by_ids, headers]
     end
-
-    # Make an index of the input data
-    #
-    # The first returned value is the domain_map: a hash of primary keys
-    # from the data (an array of strings taken from the fields named
-    # in keys) to a string which contains a delimited list of domains
-    # (represented as HTTP(S) URLs)
-    #
-    # The second is the name_map: a hash mapping normalised registrant
+    
+    # Returns a name_map: a hash mapping normalised registrant
     # names to concatenated lists of selected field values, also
     # normalised, back to the primary key source row's primary key.
-    #
-    # The third is the duplicate_by_ids: a hash mapping primary keys
-    # to a list of CSV rows (as hashes) having that key.
-    #
-    # The last is a list of CSV header field names
-    def self.mk_domain_map_etc(domainHeader, duplicate_by_ids, keys)
+    def self.mk_name_map(domainHeader, keys, duplicate_by_ids, domain_map)
       small_words = %w(on the and ltd limited llp community SCCL)
       small_word_regex = /\b#{small_words.map { |w| w.upcase }.join("|")}\b/
-
-
-      domain_map = {}
-      duplicate_by_ids.each_pair do |key, rows|
-        rows.each do |row|
-          add_to_domain_map(domainHeader, domain_map, key, row)
-        end
-      end
       
       name_map = {}
       duplicate_by_ids.each_pair do |key, rows|
@@ -119,12 +101,25 @@ module SeOpenData
         end
       end
       
-      return [domain_map, name_map]
+      return name_map
     end
-      
-    def self.add_to_domain_map(domainHeader, domain_map, key, row)
-      domain = row.field(domainHeader)
 
+    # The returned value is the domain_map: a hash of primary keys
+    # from the data (an array of strings taken from the fields named
+    # in keys) to a string which contains a delimited list of domains
+    # (represented as HTTP(S) URLs)
+    def self.mk_domain_map(domainHeader, duplicate_by_ids)
+      domain_map = {}
+      duplicate_by_ids.each_pair do |key, rows|
+        rows.each do |row|
+          domain = row.field(domainHeader)
+          add_to_domain_map(domain, domain_map, key)
+        end
+      end
+      return domain_map
+    end
+    
+    def self.add_to_domain_map(domain, domain_map, key)
       # If the key is already being used, add the domain to the existing domain.
       if domain_map.has_key? key
         if !domain_map[key].include?(domain)
@@ -340,7 +335,8 @@ module SeOpenData
       # Since we can't be certain that the id will run lexicographically we need
       # to loop through the original data once and build a hashmap of the csv
       # with multiple domains moved into a single field.
-      domain_map, name_map = mk_domain_map_etc(domainHeader, duplicate_by_ids, keys)
+      domain_map = mk_domain_map(domainHeader, duplicate_by_ids)
+      name_map = mk_name_map(domainHeader, keys, duplicate_by_ids, domain_map)
       
       field_map = munge_name_map(name_map)
 
