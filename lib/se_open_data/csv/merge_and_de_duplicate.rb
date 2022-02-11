@@ -211,6 +211,37 @@ module SeOpenData
       return duplicate_by_fields
     end
 
+    def self.write_standard_csv(csv_out, csv_map, headers, nameHeader, addr_csv_original)
+      headersOutput = false
+      csv_map.each do |key, row|
+        unless headersOutput
+          csv_out << headers
+          headersOutput = true
+        end
+        #row.id to identify orig row
+        #row[:addr] = original[:addr]
+
+        #This is a quick fix
+        #TODO: FIX ME
+        id = row["Identifier"]
+        orig_addr_entry = addr_csv_original[[id]]
+
+        if orig_addr_entry
+          row["Street Address"] = orig_addr_entry["Street Address"]
+          row["Locality"] = orig_addr_entry["Locality"]
+          row["Region"] = orig_addr_entry["Region"]
+          if row["Postcode"] == "" || !row["Postcode"]
+            row["Postcode"] = orig_addr_entry["Postcode"]
+          end
+        end
+        # Fix any entries that have no name
+        if !row[nameHeader]
+          row[nameHeader] = "N/A"
+        end
+        csv_out << row.values
+      end
+    end      
+
     # Merge domains and de-duplicate rows of CSV (primarily for dotcoop).
     #
     # A duplicate is defined as having the same keys as a previous row
@@ -258,41 +289,14 @@ module SeOpenData
       addr_csv_original = mk_addr_csv_original(original_csv, csv_opts, keys)
 
       # csv_in should be the original document before geo uniformication
-      csv_map, name_map, duplicate_by_ids, headers2 = mk_csv_map(domainHeader, csv_in, keys)
+      csv_map, name_map, duplicate_by_ids, headers = mk_csv_map(domainHeader, csv_in, keys)
       field_map = munge_name_map(name_map)
 
       # filter duplicates by all other fields
       # merge rows that have duplicated data for all fields (except id and domain)
       duplicate_by_fields = mk_duplicate_by_fields(domainHeader, field_map, csv_map)
 
-      headersOutput = false
-      csv_map.each do |key, row|
-        unless headersOutput
-          csv_out << headers2
-          headersOutput = true
-        end
-        #row.id to identify orig row
-        #row[:addr] = original[:addr]
-
-        #This is a quick fix
-        #TODO: FIX ME
-        id = row["Identifier"]
-        orig_addr_entry = addr_csv_original[[id]]
-
-        if orig_addr_entry
-          row["Street Address"] = orig_addr_entry["Street Address"]
-          row["Locality"] = orig_addr_entry["Locality"]
-          row["Region"] = orig_addr_entry["Region"]
-          if row["Postcode"] == "" || !row["Postcode"]
-            row["Postcode"] = orig_addr_entry["Postcode"]
-          end
-        end
-        # Fix any entries that have no name
-        if !row[nameHeader]
-          row[nameHeader] = "N/A"
-        end
-        csv_out << row.values
-      end
+      write_standard_csv(csv_out, csv_map, headers, nameHeader, addr_csv_original)
 
       dup_ids = duplicate_by_ids.values.select { |a| a.length > 1 }
 
