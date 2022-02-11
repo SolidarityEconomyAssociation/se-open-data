@@ -97,23 +97,21 @@ module SeOpenData
           
           #map name => (map fields_key => set of key)
           #order them by name
-          if !name_map.has_key? name
-            name_map[name] = { fields_key => [key] }
-          else
-            
-            # name_map[name].push(key)
-            # build up field_map
-            if !name_map[name].has_key? fields_key
-              #here
-              name_map[name][fields_key] = [key]
-            else
-              name_map[name][fields_key].push(key)
-            end
-          end
-
           # Remove key from field_map as it was already found as a duplicate
-          if csv_map.has_key?(key) && !csv_map[key][domainHeader].include?(row.field(domainHeader))
-            name_map[name][fields_key].pop()
+          unless csv_map.has_key?(key) && !csv_map[key][domainHeader].include?(row.field(domainHeader))
+            if !name_map.has_key? name
+              name_map[name] = { fields_key => [key] }
+            else
+              
+              # name_map[name].push(key)
+              # build up field_map
+              if !name_map[name].has_key? fields_key
+                #here
+                name_map[name][fields_key] = [key]
+              else
+                name_map[name][fields_key].push(key)
+              end
+            end
           end
           
           add_to_csv_map(domainHeader, csv_map, key, row)
