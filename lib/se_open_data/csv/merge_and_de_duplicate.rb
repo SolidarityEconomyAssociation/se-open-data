@@ -180,31 +180,28 @@ module SeOpenData
         # merge domains into the first found duplicate
         # and remove all duplicate rows
         first = values.first
-        values.each do |dup|
-          #ifit isn't the first one
-          unless dup == first
-            # add domain to the first entry (only it doesn't exist already)
-            domains = csv_map[dup]
-            unless domains
-              #pp csv_map
-              pp [hash, values]
-              pp field_map
-              throw "Can't find match for registrant #{dup}: Index csv_map[#{dup}] doesn't exist"
-            end
-            domain = domains[domainHeader]
-            unless domain
-              pp domains
-              throw "Can't find domain #{domainHeader} for registrant #{dup} in #{domains}"
-            end
-                       
-            existingDomain = csv_map[first][domainHeader]
-            if !existingDomain.include?(domain)
-              csv_map[first][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
-            end
-            # remove the duplicates from the map (this loop keeps only the first duplicate entry)
-
-            csv_map.delete(dup)
+        values.drop(1).each do |dup|
+          # add domain to the first entry (only it doesn't exist already)
+          domains = csv_map[dup]
+          unless domains
+            #pp csv_map
+            pp [hash, values]
+            pp field_map
+            throw "Can't find match for registrant #{dup}: Index csv_map[#{dup}] doesn't exist"
           end
+          domain = domains[domainHeader]
+          unless domain
+            pp domains
+            throw "Can't find domain #{domainHeader} for registrant #{dup} in #{domains}"
+          end
+          
+          existingDomain = csv_map[first][domainHeader]
+          if !existingDomain.include?(domain)
+            csv_map[first][domainHeader] += SeOpenData::CSV::Standard::V1::SubFieldSeparator + domain
+          end
+          # remove the duplicates from the map (this loop keeps only the first duplicate entry)
+          
+          csv_map.delete(dup)
         end
       end
 
