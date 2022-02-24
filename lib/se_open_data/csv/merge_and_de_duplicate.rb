@@ -63,9 +63,11 @@ module SeOpenData
 
 
     
-    # Returns a name_map: a hash mapping normalised registrant
+    # This creates a name_map: a hash mapping normalised registrant
     # names to concatenated lists of selected field values, also
     # normalised, back to the primary key source row's primary key.
+    #
+    # It does not modify anything else.
     def self.mk_name_map(domainHeader, keys, duplicate_by_ids, domain_map)
       small_words = %w(on the and ltd limited llp community SCCL)
       small_word_regex = /\b#{small_words.map { |w| w.upcase }.join("|")}\b/
@@ -118,10 +120,13 @@ module SeOpenData
       return name_map
     end
 
-    # The returned value is the domain_map: a hash of primary keys
-    # from the data (an array of strings taken from the fields named
-    # in keys) to a string which contains a delimited list of domains
-    # (represented as HTTP(S) URLs)
+    # The creates a domain_map: a hash of primary keys from the data
+    # (an array of strings taken from the fields named in keys), to a
+    # string which contains a delimited list of domains (represented
+    # as HTTP(S) URLs)
+    #
+    # It does not modify anything else.
+    #
     def self.mk_domain_map(domainHeader, duplicate_by_ids)
       domain_map = {}
       duplicate_by_ids.each_pair do |key, rows|
@@ -147,7 +152,7 @@ module SeOpenData
     end
     
   
-    # Merge entries (in domain_map) that have the same name, and a leivenstein distance of < 2
+    # Merge entries in name_map that have the same name, and a levenstein distance of < 2
     def self.merge_name_map(name_map)
 #      $stderr.puts(name_map.keys)
       #name_map groups them by name
@@ -174,7 +179,9 @@ module SeOpenData
       end
     end
 
-    # Returns name_map trasnformed into a hash mapping name+fieldskey to the original primary key
+    # Returns name_map transformed into a hash mapping name+fieldskey to the original primary key
+    #
+    # Does not modify name_map
     def self.mk_field_map(name_map)
       #flatten name_map
       field_map = {}
@@ -190,6 +197,8 @@ module SeOpenData
 
     # Returns an array of elements, each of which is an arrays of row
     # keys which are duplicated of each other.
+    #
+    # Does not modify anything else
     def self.mk_duplicate_by_fields(field_map)
       duplicate_by_fields = []
       field_map.each_value do |keys|
@@ -199,14 +208,16 @@ module SeOpenData
       end
       return duplicate_by_fields
     end
-    
+
+    # Merges domains in domain_map to the first found and remove all
+    # duplicates
+    #
+    # Does not modify anything else, including field_map
     def self.merge_domain_map(field_map, domain_map)
       field_map.each do |name_and_fields, keys|
-        # merge domains into the first found duplicate
-        # and remove all duplicate rows
         first = keys.first
         keys.drop(1).each do |dup|
-          # add domain to the first entry (only it doesn't exist already)
+          # add domain to the first entry (if it doesn't exist already)
           domain = domain_map[dup]
           unless domain
             #pp domain_map
@@ -225,6 +236,7 @@ module SeOpenData
       end
     end
 
+    # Write out the domains from domain_map in standard CSV format to csv_out
     def self.write_standard_csv(csv_out, domain_map, duplicate_by_fields, headers, domainHeader, nameHeader, addr_csv_original)
       headersOutput = false
       domain_map.each_pair do |key, domains|
