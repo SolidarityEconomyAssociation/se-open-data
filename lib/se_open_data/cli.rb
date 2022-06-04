@@ -401,6 +401,10 @@ module SeOpenData
         collection.serialize_everything(config.GEN_DOC_DIR)
       end
 
+      # Copy original CSV into upload folder
+      standard_csv = File.join(config.GEN_DOC_DIR, 'standard.csv')
+      FileUtils.cp config.STANDARD_CSV, standard_csv
+
       # Write timestamp and hash metadata. This is so we can see where
       # and how the data was generated.
       # Note, meta.json absent at this point so is not included in doc_hash
