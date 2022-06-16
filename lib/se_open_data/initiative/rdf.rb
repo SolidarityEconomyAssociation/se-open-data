@@ -1,6 +1,7 @@
 require "linkeddata"
 require "se_open_data/initiative/rdf/config"
 require "se_open_data/initiative/file"
+require "se_open_data/rdf/companies_house"
 require "normalize_country"
 require "se_open_data/utils/log_factory"
 
